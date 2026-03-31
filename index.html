@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pangeia 96 — Precificação Março 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f4f5f7;
+  --bg2:       #ffffff;
+  --bg3:       #f0f1f4;
+  --bg4:       #e4e6ec;
+  --border:    rgba(0,0,0,0.08);
+  --border2:   rgba(0,0,0,0.14);
+  --text:      #1a1d27;
+  --text2:     #5a5f7a;
+  --text3:     #9498b0;
+  --accent:    #4f72e3;
+  --accent2:   #7c5cbf;
+  --green:     #0ea86e;
+  --amber:     #d97706;
+  --red:       #dc3545;
+  --coral:     #e5475c;
+  --teal:      #0891b2;
+  --mono:      'DM Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.5; min-height: 100vh; }
+
+/* ── HEADER ── */
+.header { padding: 20px 28px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--bg2); }
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; color: #fff; letter-spacing: -0.5px; flex-shrink: 0; }
+.brand-text h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+.brand-text p  { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.header-meta { display: flex; gap: 20px; align-items: center; }
+.meta-pill { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 4px 11px; font-size: 12px; color: var(--text2); }
+.meta-pill b { color: var(--text); font-weight: 500; }
+
+/* ── KPI STRIP ── */
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+.kpi { background: var(--bg2); padding: 16px 24px; }
+.kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.kpi-value { font-size: 22px; font-weight: 600; margin-top: 4px; letter-spacing: -0.5px; font-family: var(--mono); }
+.kpi-sub   { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.kpi-value.accent  { color: var(--accent); }
+.kpi-value.green   { color: var(--green); }
+.kpi-value.amber   { color: var(--amber); }
+.kpi-value.coral   { color: var(--coral); }
+
+/* ── LAYOUT ── */
+.main { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 200px); overflow: hidden; }
+.sidebar { border-right: 1px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 20px; background: var(--bg3); width: 240px; max-width: 240px; overflow: hidden; box-sizing: border-box; }
+.s-section { width: 100%; max-width: 208px; overflow: hidden; box-sizing: border-box; }
+.content { padding: 20px; overflow: hidden; min-width: 0; }
+
+/* ── SIDEBAR SECTIONS ── */
+.s-section h3 { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-bottom: 10px; }
+
+.filter-btn-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-btn { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 8px 10px; font-family: var(--sans); font-size: 12px; color: var(--text2); cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between; transition: all .15s; }
+.filter-btn:hover { background: var(--bg3); color: var(--text); }
+.filter-btn.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+.filter-btn .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.filter-btn .cnt { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.filter-btn-left { display: flex; align-items: center; gap: 8px; }
+
+/* Tipo colors */
+.dot-calca   { background: #6c8fff; }
+.dot-vestido { background: #34d399; }
+.dot-body    { background: #fb7185; }
+.dot-top     { background: #fbbf24; }
+.dot-saia    { background: #c084fc; }
+.dot-blusa   { background: #2dd4bf; }
+
+/* ── MARGEM EDITOR ── */
+.margem-editor { display: flex; flex-direction: column; gap: 8px; }
+.margem-row { display: flex; align-items: center; gap: 8px; }
+.margem-label { font-size: 12px; color: var(--text2); flex: 1; display: flex; align-items: center; gap: 6px; }
+.margem-input { width: 54px; min-width: 0; background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 4px 6px; text-align: right; outline: none; transition: border-color .15s; box-sizing: border-box; }
+.margem-input:focus { border-color: var(--accent); }
+.apply-btn { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 7px; padding: 9px; font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity .15s; margin-top: 4px; }
+.apply-btn:hover { opacity: .85; }
+
+/* ── PARAM EDITOR ── */
+.param-grid { display: flex; flex-direction: column; gap: 6px; }
+.param-row { display: flex; align-items: center; gap: 6px; }
+.param-label { font-size: 11px; color: var(--text2); flex: 1; }
+.param-input { width: 54px; min-width: 0; background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 11px; padding: 3px 5px; text-align: right; outline: none; transition: border-color .15s; box-sizing: border-box; }
+.param-input:focus { border-color: var(--accent); }
+.recalc-btn { width: 100%; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: 7px; padding: 8px; font-family: var(--sans); font-size: 11px; cursor: pointer; transition: all .15s; margin-top: 2px; }
+.recalc-btn:hover { background: var(--bg4); border-color: var(--accent); color: var(--accent); }
+
+/* ── TECIDO FILTER ── */
+.search-input { width: 100%; max-width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 7px; color: var(--text); font-family: var(--sans); font-size: 12px; padding: 7px 10px; outline: none; transition: border-color .15s; box-sizing: border-box; }
+.search-input:focus { border-color: var(--accent); }
+.tecido-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-height: 180px; overflow-y: auto; padding-right: 2px; }
+.tecido-tags::-webkit-scrollbar { width: 3px; }
+.tecido-tags::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.tecido-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; cursor: pointer; transition: all .15s; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); white-space: nowrap; }
+.tecido-tag:hover { background: var(--bg4); color: var(--text); border-color: var(--border2); }
+.tecido-tag.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tecido-tag .tcnt { font-size: 10px; opacity: .7; font-family: var(--mono); }
+
+/* ── TABLE TOOLBAR ── */
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.tb-search { flex: 1; min-width: 180px; background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: var(--sans); font-size: 12px; padding: 7px 12px; outline: none; transition: border-color .15s; }
+.tb-search:focus { border-color: var(--accent); }
+.col-toggle { font-size: 11px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; color: var(--text2); cursor: pointer; transition: all .12s; }
+.col-toggle:hover { border-color: var(--border2); color: var(--text); }
+.col-toggle.on { background: var(--bg3); border-color: var(--accent); color: var(--accent); }
+.result-count { font-size: 11px; color: var(--text3); margin-left: auto; font-family: var(--mono); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.table-wrap::-webkit-scrollbar { height: 4px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 2; transition: color .12s; font-size: 11px; letter-spacing: 0.02em; }
+thead th:hover { color: var(--text); }
+thead th.sort-asc::after  { content: ' ↑'; color: var(--accent); }
+thead th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #eef1fb; }
+tbody td { padding: 9px 12px; white-space: nowrap; }
+td.right { text-align: right; font-family: var(--mono); }
+td.center { text-align: center; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+.badge-calca   { background: rgba(108,143,255,.15); color: #8aabff; }
+.badge-vestido { background: rgba(52,211,153,.12); color: #34d399; }
+.badge-body    { background: rgba(251,113,133,.12); color: #fb7185; }
+.badge-top     { background: rgba(251,191,36,.12);  color: #fbbf24; }
+.badge-saia    { background: rgba(192,132,252,.12); color: #c084fc; }
+.badge-blusa   { background: rgba(45,212,191,.12);  color: #2dd4bf; }
+
+/* Values */
+.val-green  { color: var(--green); }
+.val-amber  { color: var(--amber); }
+.val-red    { color: var(--red); }
+.val-accent { color: var(--accent); }
+.val-muted  { color: var(--text3); }
+
+/* Grau bar */
+.grau-wrap { display: flex; align-items: center; gap: 6px; }
+.grau-bar { height: 4px; border-radius: 2px; flex: 0 0 40px; background: var(--bg4); overflow: hidden; }
+.grau-fill { height: 100%; border-radius: 2px; }
+
+/* Inline margem edit */
+.td-margem { display: flex; align-items: center; gap: 4px; }
+.td-margem input { width: 44px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; color: var(--accent); font-family: var(--mono); font-size: 11px; padding: 2px 5px; text-align: right; outline: none; }
+.td-margem input:focus { border-color: var(--accent); }
+
+/* Lucro % bar */
+.lucro-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 90px; }
+.lucro-bar-bg { flex: 1; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.lucro-bar-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width .3s; }
+
+/* ── CHART MINI ── */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.chart-card h4 { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; font-weight: 500; margin-bottom: 12px; }
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 8px; }
+.bar-row-label { font-size: 11px; color: var(--text2); width: 70px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-row-bar { flex: 1; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+.bar-row-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+.bar-row-val { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 60px; text-align: right; flex-shrink: 0; }
+
+/* ── EMPTY ── */
+.empty { padding: 40px; text-align: center; color: var(--text3); }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 16px; font-size: 12px; color: var(--text); transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 100; }
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .charts-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="brand">
+    <div class="logo-mark">P96</div>
+    <div class="brand-text">
+      <h1>Pangeia 96 — Precificação</h1>
+      <p>Dashboard de produção e análise de margem</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-pill">Período: <b>Março 2026</b></div>
+    <div class="meta-pill">Peças: <b id="h-total-pcs">79.386</b></div>
+    <div class="meta-pill">Produtos: <b>43</b></div>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Receita Total Estimada</div>
+    <div class="kpi-value accent" id="kpi-receita">—</div>
+    <div class="kpi-sub">com margem atual</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Custo Total de Produção</div>
+    <div class="kpi-value amber" id="kpi-custo">—</div>
+    <div class="kpi-sub">costura + corte + tecido</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Lucro Total Estimado</div>
+    <div class="kpi-value green" id="kpi-lucro">—</div>
+    <div class="kpi-sub">após frete e impostos</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Margem Média Ponderada</div>
+    <div class="kpi-value green" id="kpi-margem">—</div>
+    <div class="kpi-sub">sobre preço de venda</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Ticket Médio / Peça</div>
+    <div class="kpi-value accent" id="kpi-ticket">—</div>
+    <div class="kpi-sub">preço de venda médio</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Custo Médio / Peça</div>
+    <div class="kpi-value amber" id="kpi-custo-pc">—</div>
+    <div class="kpi-sub">todas as categorias</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Filtro por Tipo -->
+    <div class="s-section">
+      <h3>Tipo de Produto</h3>
+      <div class="filter-btn-group" id="tipo-filters">
+        <button class="filter-btn active" data-tipo="all" onclick="setTipo('all',this)">
+          <div class="filter-btn-left"><div class="dot" style="background:var(--text2)"></div> Todos</div>
+          <span class="cnt" id="cnt-all">43</span>
+        </button>
+        <button class="filter-btn" data-tipo="Top" onclick="setTipo('Top',this)">
+          <div class="filter-btn-left"><div class="dot dot-top"></div> Top</div>
+          <span class="cnt" id="cnt-Top">—</span>
+        </button>
+        <button class="filter-btn" data-tipo="Vestido" onclick="setTipo('Vestido',this)">
+          <div class="filter-btn-left"><div class="dot dot-vestido"></div> Vestido</div>
+          <span class="cnt" id="cnt-Vestido">—</span>
+        </button>
+        <button class="filter-btn" data-tipo="Body" onclick="setTipo('Body',this)">
+          <div class="filter-btn-left"><div class="dot dot-body"></div> Body</div>
+          <span class="cnt" id="cnt-Body">—</span>
+        </button>
+        <button class="filter-btn" data-tipo="Calça" onclick="setTipo('Calça',this)">
+          <div class="filter-btn-left"><div class="dot dot-calca"></div> Calça</div>
+          <span class="cnt" id="cnt-Calça">—</span>
+        </button>
+        <button class="filter-btn" data-tipo="Saia" onclick="setTipo('Saia',this)">
+          <div class="filter-btn-left"><div class="dot dot-saia"></div> Saia</div>
+          <span class="cnt" id="cnt-Saia">—</span>
+        </button>
+        <button class="filter-btn" data-tipo="Blusa" onclick="setTipo('Blusa',this)">
+          <div class="filter-btn-left"><div class="dot dot-blusa"></div> Blusa</div>
+          <span class="cnt" id="cnt-Blusa">—</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Margem por Tipo -->
+    <div class="s-section">
+      <h3>Margem por Tipo</h3>
+      <div class="margem-editor" id="margem-editor"></div>
+      <button class="apply-btn" onclick="applyMargens()">Aplicar Margens</button>
+    </div>
+
+    <!-- Parâmetros Globais -->
+    <div class="s-section">
+      <h3>Parâmetros Globais</h3>
+      <div class="param-grid">
+        <div class="param-row">
+          <span class="param-label">ICMS %</span>
+          <input class="param-input" id="p-icms" type="number" value="12" min="0" max="100" step="0.5">
+        </div>
+        <div class="param-row">
+          <span class="param-label">Frete fixo R$</span>
+          <input class="param-input" id="p-frete" type="number" value="4.00" min="0" step="0.10">
+        </div>
+        <div class="param-row">
+          <span class="param-label">Despesa %</span>
+          <input class="param-input" id="p-desp" type="number" value="5" min="0" max="100" step="0.5">
+        </div>
+      </div>
+      <button class="recalc-btn" onclick="recalcAll()">↻ Recalcular tudo</button>
+    </div>
+
+    <!-- Filtro por Tecido -->
+    <div class="s-section">
+      <h3>Tecido Principal</h3>
+      <input class="search-input" id="tecido-search" placeholder="Buscar tecido..." oninput="filterTecidos(this.value)">
+      <div class="tecido-tags" id="tecido-list"></div>
+    </div>
+
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- Mini charts -->
+    <div class="charts-row" id="charts-row"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input class="tb-search" id="prod-search" placeholder="Buscar produto..." oninput="renderTable()">
+      <button class="col-toggle on" data-col="custos" onclick="toggleCol(this)">Custos</button>
+      <button class="col-toggle on" data-col="tecido" onclick="toggleCol(this)">Tecido</button>
+      <button class="col-toggle on" data-col="preco"  onclick="toggleCol(this)">Precif.</button>
+      <span class="result-count" id="result-count">43 produtos</span>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table id="main-table">
+        <thead id="main-thead"></thead>
+        <tbody id="main-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const RAW = [{"produto":"ALBA","classif":"Vestido","qtd":1045,"grau":2,"lead":4,"v_praticado":7,"v_definido":6,"custo_cos_lote":6270,"tecido":"Bahamas","rend_pc":1.21,"rend_tec":1,"tipo_corte":"MT","preco_tec":16.8,"custo_tec_pc":20.328,"custo_tec_lote":21242.76,"preco_corte_pc":0.8743,"custo_corte_lote":913.67,"custo_total_pc":27.2023,"custo_total_lote":28426.43,"pct_costura":0.2206,"pct_tecido":0.7473,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":94.55,"lucro_pc":63.35,"lucro_pct":0.67},{"produto":"ALICIA","classif":"Vestido","qtd":687,"grau":2,"lead":5,"v_praticado":8,"v_definido":7,"custo_cos_lote":4809,"tecido":"Visco Slim lunelli","rend_pc":0.91,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":15.8766,"custo_tec_lote":10907.22,"preco_corte_pc":0.9658,"custo_corte_lote":663.52,"custo_total_pc":23.8424,"custo_total_lote":16379.74,"pct_costura":0.2936,"pct_tecido":0.6659,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":84.37,"lucro_pc":56.53,"lucro_pct":0.67},{"produto":"AMANDA","classif":"Body","qtd":1492,"grau":3,"lead":5,"v_praticado":6.5,"v_definido":7,"custo_cos_lote":10444,"tecido":"Viva Light Texneo","rend_pc":0.73,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":18.7063,"custo_tec_lote":27909.73,"preco_corte_pc":0.8721,"custo_corte_lote":1301.14,"custo_total_pc":26.5783,"custo_total_lote":39654.86,"pct_costura":0.2634,"pct_tecido":0.7038,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":92.66,"lucro_pc":62.08,"lucro_pct":0.67},{"produto":"ANNA","classif":"Top","qtd":1267,"grau":2,"lead":4,"v_praticado":6.5,"v_definido":7,"custo_cos_lote":8869,"tecido":"Visco Slim lunelli","rend_pc":0.63,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":10.9915,"custo_tec_lote":13926.22,"preco_corte_pc":0.8871,"custo_corte_lote":1124.0,"custo_total_pc":18.8786,"custo_total_lote":23919.22,"pct_costura":0.3708,"pct_tecido":0.5822,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":69.33,"lucro_pc":46.45,"lucro_pct":0.67},{"produto":"BA","classif":"Blusa","qtd":257,"grau":3,"lead":7,"v_praticado":6,"v_definido":6,"custo_cos_lote":1542,"tecido":"Micro Jersey","rend_pc":0.35,"rend_tec":2.99,"tipo_corte":"KG","preco_tec":27.28,"custo_tec_pc":3.1933,"custo_tec_lote":820.68,"preco_corte_pc":0.888,"custo_corte_lote":228.22,"custo_total_pc":10.0813,"custo_total_lote":2590.9,"pct_costura":0.5952,"pct_tecido":0.3168,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":42.67,"lucro_pc":28.59,"lucro_pct":0.67},{"produto":"BELLA","classif":"Vestido","qtd":822,"grau":3,"lead":5,"v_praticado":7.5,"v_definido":7,"custo_cos_lote":5754,"tecido":"Visco Slim lunelli","rend_pc":0.98,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":17.0979,"custo_tec_lote":14054.45,"preco_corte_pc":0.8791,"custo_corte_lote":722.64,"custo_total_pc":24.977,"custo_total_lote":20531.09,"pct_costura":0.2803,"pct_tecido":0.6845,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":87.81,"lucro_pc":58.83,"lucro_pct":0.67},{"produto":"BRA 001","classif":"Top","qtd":16625,"grau":2,"lead":3,"v_praticado":5,"v_definido":5,"custo_cos_lote":83125,"tecido":"Tulum Canelado","rend_pc":0.4,"rend_tec":2.95,"tipo_corte":"KG","preco_tec":33.56,"custo_tec_pc":4.5505,"custo_tec_lote":75652.2,"preco_corte_pc":0.8521,"custo_corte_lote":14165.91,"custo_total_pc":10.4026,"custo_total_lote":172943.11,"pct_costura":0.4806,"pct_tecido":0.4374,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":43.64,"lucro_pc":29.24,"lucro_pct":0.67},{"produto":"BRA 002","classif":"Top","qtd":4599,"grau":2,"lead":3,"v_praticado":5,"v_definido":5,"custo_cos_lote":22995,"tecido":"Tulum Canelado","rend_pc":0.4,"rend_tec":2.95,"tipo_corte":"KG","preco_tec":33.56,"custo_tec_pc":4.5505,"custo_tec_lote":20927.79,"preco_corte_pc":0.8521,"custo_corte_lote":3918.74,"custo_total_pc":10.4026,"custo_total_lote":47841.53,"pct_costura":0.4806,"pct_tecido":0.4374,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":43.64,"lucro_pc":29.24,"lucro_pct":0.67},{"produto":"BRIZA","classif":"Top","qtd":772,"grau":6,"lead":7,"v_praticado":15,"v_definido":6,"custo_cos_lote":4632,"tecido":"Vitta Light","rend_pc":0.43,"rend_tec":2.72,"tipo_corte":"KG","preco_tec":39.99,"custo_tec_pc":6.3219,"custo_tec_lote":4880.54,"preco_corte_pc":0.8652,"custo_corte_lote":667.9,"custo_total_pc":13.1871,"custo_total_lote":10180.44,"pct_costura":0.455,"pct_tecido":0.4794,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":52.08,"lucro_pc":34.9,"lucro_pct":0.67},{"produto":"CAMILA","classif":"Top","qtd":116,"grau":2,"lead":4,"v_praticado":5.5,"v_definido":6,"custo_cos_lote":696,"tecido":"Viva Light Texneo","rend_pc":0.72,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":18.45,"custo_tec_lote":2140.2,"preco_corte_pc":0.8652,"custo_corte_lote":100.36,"custo_total_pc":25.3152,"custo_total_lote":2936.56,"pct_costura":0.237,"pct_tecido":0.7288,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":88.83,"lucro_pc":59.52,"lucro_pct":0.67},{"produto":"CATARINA","classif":"Top","qtd":407,"grau":2,"lead":4,"v_praticado":6.5,"v_definido":6,"custo_cos_lote":2442,"tecido":"Visco Slim lunelli","rend_pc":0.35,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":6.1064,"custo_tec_lote":2485.3,"preco_corte_pc":0.8592,"custo_corte_lote":349.7,"custo_total_pc":12.9656,"custo_total_lote":5277.0,"pct_costura":0.4628,"pct_tecido":0.471,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":51.41,"lucro_pc":34.45,"lucro_pct":0.67},{"produto":"CHARLY","classif":"Body","qtd":1732,"grau":8,"lead":7,"v_praticado":16,"v_definido":6,"custo_cos_lote":10392,"tecido":"Viva Light Texneo","rend_pc":0.62,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":15.8875,"custo_tec_lote":27517.15,"preco_corte_pc":0.8592,"custo_corte_lote":1488.17,"custo_total_pc":22.7467,"custo_total_lote":39397.32,"pct_costura":0.2638,"pct_tecido":0.6985,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":81.05,"lucro_pc":54.3,"lucro_pct":0.67},{"produto":"CLÉO","classif":"Body","qtd":926,"grau":6,"lead":7,"v_praticado":15,"v_definido":6,"custo_cos_lote":5556,"tecido":"Viva Light Texneo","rend_pc":0.85,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":21.7813,"custo_tec_lote":20169.44,"preco_corte_pc":0.8592,"custo_corte_lote":795.64,"custo_total_pc":28.6405,"custo_total_lote":26521.08,"pct_costura":0.2095,"pct_tecido":0.7605,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":98.91,"lucro_pc":66.27,"lucro_pct":0.67},{"produto":"DUNA","classif":"Top","qtd":670,"grau":5,"lead":7,"v_praticado":15,"v_definido":15,"custo_cos_lote":10050,"tecido":"Vitta Light","rend_pc":0.37,"rend_tec":2.72,"tipo_corte":"KG","preco_tec":39.99,"custo_tec_pc":5.4398,"custo_tec_lote":3644.68,"preco_corte_pc":0.8592,"custo_corte_lote":575.68,"custo_total_pc":21.299,"custo_total_lote":14270.35,"pct_costura":0.7043,"pct_tecido":0.2554,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":76.66,"lucro_pc":51.36,"lucro_pct":0.67},{"produto":"GABRIELA","classif":"Top","qtd":495,"grau":1,"lead":3,"v_praticado":6,"v_definido":6,"custo_cos_lote":2970,"tecido":"Visco Slim lunelli","rend_pc":0.74,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":12.9106,"custo_tec_lote":6390.77,"preco_corte_pc":0.8559,"custo_corte_lote":423.66,"custo_total_pc":19.7665,"custo_total_lote":9784.43,"pct_costura":0.3035,"pct_tecido":0.6532,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":72.02,"lucro_pc":48.25,"lucro_pct":0.67},{"produto":"HOT","classif":"Top","qtd":440,"grau":2,"lead":3,"v_praticado":5,"v_definido":5,"custo_cos_lote":2200,"tecido":"Tulum Canelado","rend_pc":0.4,"rend_tec":2.95,"tipo_corte":"KG","preco_tec":33.56,"custo_tec_pc":4.5505,"custo_tec_lote":2002.22,"preco_corte_pc":0.824,"custo_corte_lote":362.55,"custo_total_pc":10.3745,"custo_total_lote":4564.78,"pct_costura":0.4820,"pct_tecido":0.4386,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":43.56,"lucro_pc":29.18,"lucro_pct":0.67},{"produto":"KATY","classif":"Top","qtd":1129,"grau":6,"lead":7,"v_praticado":15,"v_definido":3.5,"custo_cos_lote":3951.5,"tecido":"Micro Jersey","rend_pc":0.95,"rend_tec":2.99,"tipo_corte":"KG","preco_tec":27.28,"custo_tec_pc":8.6676,"custo_tec_lote":9785.67,"preco_corte_pc":0.8393,"custo_corte_lote":947.55,"custo_total_pc":13.0068,"custo_total_lote":14684.73,"pct_costura":0.2691,"pct_tecido":0.6664,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":51.54,"lucro_pc":34.53,"lucro_pct":0.67},{"produto":"LIA","classif":"Saia","qtd":914,"grau":8,"lead":7,"v_praticado":6,"v_definido":6,"custo_cos_lote":5484,"tecido":"Visco Slim lunelli","rend_pc":1.05,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":18.3191,"custo_tec_lote":16743.7,"preco_corte_pc":0.9134,"custo_corte_lote":834.86,"custo_total_pc":25.2326,"custo_total_lote":23062.56,"pct_costura":0.2378,"pct_tecido":0.726,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":88.58,"lucro_pc":59.35,"lucro_pct":0.67},{"produto":"LIS","classif":"Vestido","qtd":499,"grau":2,"lead":4,"v_praticado":6.5,"v_definido":6,"custo_cos_lote":2994,"tecido":"Visco Slim lunelli","rend_pc":0.93,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":16.2255,"custo_tec_lote":8096.54,"preco_corte_pc":0.9493,"custo_corte_lote":473.68,"custo_total_pc":23.1748,"custo_total_lote":11564.22,"pct_costura":0.2589,"pct_tecido":0.7001,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":82.35,"lucro_pc":55.17,"lucro_pct":0.67},{"produto":"LUA","classif":"Vestido","qtd":414,"grau":2,"lead":4,"v_praticado":7.5,"v_definido":6,"custo_cos_lote":2484,"tecido":"Visco Slim lunelli","rend_pc":0.55,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":9.5957,"custo_tec_lote":3972.64,"preco_corte_pc":0.839,"custo_corte_lote":347.33,"custo_total_pc":16.4347,"custo_total_lote":6803.97,"pct_costura":0.3651,"pct_tecido":0.5839,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":61.92,"lucro_pc":41.49,"lucro_pct":0.67},{"produto":"LUCY","classif":"Top","qtd":1913,"grau":1,"lead":15,"v_praticado":40,"v_definido":40,"custo_cos_lote":76520,"tecido":"fio tricot","rend_pc":1,"rend_tec":1,"tipo_corte":"UND","preco_tec":null,"custo_tec_pc":null,"custo_tec_lote":0,"preco_corte_pc":0,"custo_corte_lote":0,"custo_total_pc":40,"custo_total_lote":76520,"pct_costura":1,"pct_tecido":0,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":133.33,"lucro_pc":89.33,"lucro_pct":0.67},{"produto":"LULU","classif":"Vestido","qtd":198,"grau":4,"lead":7,"v_praticado":6,"v_definido":6,"custo_cos_lote":1188,"tecido":"Visco Slim lunelli","rend_pc":1,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":17.4468,"custo_tec_lote":3454.47,"preco_corte_pc":0.839,"custo_corte_lote":166.12,"custo_total_pc":24.2858,"custo_total_lote":4808.58,"pct_costura":0.2471,"pct_tecido":0.7184,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":85.71,"lucro_pc":57.43,"lucro_pct":0.67},{"produto":"MAIA","classif":"Top","qtd":200,"grau":2,"lead":4,"v_praticado":5,"v_definido":6,"custo_cos_lote":1200,"tecido":"Viva Light Texneo","rend_pc":0.62,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":15.8875,"custo_tec_lote":3177.5,"preco_corte_pc":0.839,"custo_corte_lote":167.79,"custo_total_pc":22.7265,"custo_total_lote":4545.29,"pct_costura":0.264,"pct_tecido":0.6991,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":80.99,"lucro_pc":54.26,"lucro_pct":0.67},{"produto":"MAITÊ","classif":"Body","qtd":1825,"grau":6,"lead":7,"v_praticado":12,"v_definido":8,"custo_cos_lote":14600,"tecido":"Visco Slim lunelli","rend_pc":0.4,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":6.9787,"custo_tec_lote":12736.17,"preco_corte_pc":0.8209,"custo_corte_lote":1498.13,"custo_total_pc":15.7996,"custo_total_lote":28834.3,"pct_costura":0.5063,"pct_tecido":0.4417,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":60.0,"lucro_pc":40.2,"lucro_pct":0.67},{"produto":"MANDI","classif":"Top","qtd":2649,"grau":2,"lead":4,"v_praticado":5,"v_definido":6,"custo_cos_lote":15894,"tecido":"Viva Light Texneo","rend_pc":0.57,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":14.6063,"custo_tec_lote":38692.0,"preco_corte_pc":0.8489,"custo_corte_lote":2248.82,"custo_total_pc":21.4552,"custo_total_lote":56834.78,"pct_costura":0.2797,"pct_tecido":0.6808,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":77.14,"lucro_pc":51.68,"lucro_pct":0.67},{"produto":"MATILDA","classif":"Body","qtd":2781,"grau":7,"lead":7,"v_praticado":7,"v_definido":7,"custo_cos_lote":19467,"tecido":"Viva Light Texneo","rend_pc":0.63,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":16.1438,"custo_tec_lote":44895.77,"preco_corte_pc":0.8751,"custo_corte_lote":2433.71,"custo_total_pc":24.0189,"custo_total_lote":66796.48,"pct_costura":0.2914,"pct_tecido":0.6721,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":84.91,"lucro_pc":56.89,"lucro_pct":0.67},{"produto":"MIA","classif":"Top","qtd":4883,"grau":1,"lead":3,"v_praticado":6,"v_definido":7,"custo_cos_lote":34181,"tecido":"tule myra","rend_pc":0.52,"rend_tec":7.35,"tipo_corte":"KG","preco_tec":39.9,"custo_tec_pc":2.8229,"custo_tec_lote":13784.01,"preco_corte_pc":0.847,"custo_corte_lote":4136.14,"custo_total_pc":10.6699,"custo_total_lote":52101.15,"pct_costura":0.6561,"pct_tecido":0.2646,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":44.45,"lucro_pc":29.78,"lucro_pct":0.67},{"produto":"MILLI","classif":"Top","qtd":206,"grau":1,"lead":3,"v_praticado":5,"v_definido":7,"custo_cos_lote":1442,"tecido":"Micro Jersey","rend_pc":1.1,"rend_tec":2.99,"tipo_corte":"KG","preco_tec":27.28,"custo_tec_pc":10.0361,"custo_tec_lote":2067.44,"preco_corte_pc":0.9067,"custo_corte_lote":186.78,"custo_total_pc":17.9428,"custo_total_lote":3696.22,"pct_costura":0.3901,"pct_tecido":0.5593,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":66.49,"lucro_pc":44.55,"lucro_pct":0.67},{"produto":"MIRANDA","classif":"Calça","qtd":2047,"grau":2,"lead":4,"v_praticado":7,"v_definido":6,"custo_cos_lote":12282,"tecido":"SANTORINI","rend_pc":1.45,"rend_tec":1,"tipo_corte":"MT","preco_tec":19.05,"custo_tec_pc":27.6225,"custo_tec_lote":56543.26,"preco_corte_pc":0.9067,"custo_corte_lote":1856.01,"custo_total_pc":34.5292,"custo_total_lote":70681.27,"pct_costura":0.1738,"pct_tecido":0.8,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":116.76,"lucro_pc":78.23,"lucro_pct":0.67},{"produto":"NIKKI","classif":"Calça","qtd":3377,"grau":3,"lead":5,"v_praticado":6.5,"v_definido":7,"custo_cos_lote":23639,"tecido":"Sarja Delfi paranatex","rend_pc":1.5,"rend_tec":1,"tipo_corte":"MT","preco_tec":17.45,"custo_tec_pc":26.175,"custo_tec_lote":88392.98,"preco_corte_pc":0.9067,"custo_corte_lote":3061.93,"custo_total_pc":34.0817,"custo_total_lote":115093.9,"pct_costura":0.2054,"pct_tecido":0.768,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":115.4,"lucro_pc":77.32,"lucro_pct":0.67},{"produto":"OFÉLIA","classif":"Top","qtd":1753,"grau":2,"lead":4,"v_praticado":5.5,"v_definido":7,"custo_cos_lote":12271,"tecido":"tule myra","rend_pc":0.98,"rend_tec":7.35,"tipo_corte":"KG","preco_tec":39.9,"custo_tec_pc":5.32,"custo_tec_lote":9325.96,"preco_corte_pc":0.868,"custo_corte_lote":1521.65,"custo_total_pc":13.188,"custo_total_lote":23118.61,"pct_costura":0.5308,"pct_tecido":0.4034,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":52.08,"lucro_pc":34.9,"lucro_pct":0.67},{"produto":"OLGA","classif":"Top","qtd":2369,"grau":1,"lead":3,"v_praticado":5,"v_definido":5,"custo_cos_lote":11845,"tecido":"Visco Slim lunelli","rend_pc":0.47,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":8.2,"custo_tec_lote":19425.8,"preco_corte_pc":0.8196,"custo_corte_lote":1941.51,"custo_total_pc":14.0196,"custo_total_lote":33212.31,"pct_costura":0.3566,"pct_tecido":0.5849,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":54.6,"lucro_pc":36.59,"lucro_pct":0.67},{"produto":"OLÍVIA","classif":"Body","qtd":1132,"grau":4,"lead":6,"v_praticado":5,"v_definido":5,"custo_cos_lote":5660,"tecido":"Viva Light Texneo","rend_pc":0.63,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":16.1438,"custo_tec_lote":18274.73,"preco_corte_pc":0.8196,"custo_corte_lote":927.73,"custo_total_pc":21.9633,"custo_total_lote":24862.46,"pct_costura":0.2277,"pct_tecido":0.735,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":78.68,"lucro_pc":52.71,"lucro_pct":0.67},{"produto":"PIETRA","classif":"Blusa","qtd":1539,"grau":3,"lead":5,"v_praticado":7,"v_definido":7,"custo_cos_lote":10773,"tecido":"tule myra","rend_pc":0.5,"rend_tec":7.35,"tipo_corte":"KG","preco_tec":39.9,"custo_tec_pc":2.7143,"custo_tec_lote":4177.29,"preco_corte_pc":0.9833,"custo_corte_lote":1513.35,"custo_total_pc":10.6976,"custo_total_lote":16463.64,"pct_costura":0.6544,"pct_tecido":0.2537,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":44.54,"lucro_pc":29.84,"lucro_pct":0.67},{"produto":"PÉROLA","classif":"Vestido","qtd":4919,"grau":5,"lead":7,"v_praticado":12,"v_definido":12,"custo_cos_lote":59028,"tecido":"tule myra","rend_pc":2.45,"rend_tec":7.35,"tipo_corte":"KG","preco_tec":39.9,"custo_tec_pc":13.3,"custo_tec_lote":65422.7,"preco_corte_pc":0.9073,"custo_corte_lote":4462.96,"custo_total_pc":26.2073,"custo_total_lote":128913.66,"pct_costura":0.4579,"pct_tecido":0.5075,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":91.54,"lucro_pc":61.33,"lucro_pct":0.67},{"produto":"SABRINA","classif":"Top","qtd":1562,"grau":1,"lead":3,"v_praticado":5,"v_definido":6,"custo_cos_lote":9372,"tecido":"Micro Jersey","rend_pc":0.72,"rend_tec":2.99,"tipo_corte":"KG","preco_tec":27.28,"custo_tec_pc":6.5691,"custo_tec_lote":10260.93,"preco_corte_pc":0.88,"custo_corte_lote":1374.64,"custo_total_pc":13.4491,"custo_total_lote":21007.57,"pct_costura":0.4461,"pct_tecido":0.4884,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":52.88,"lucro_pc":35.43,"lucro_pct":0.67},{"produto":"SELENA","classif":"Calça","qtd":1277,"grau":3,"lead":7,"v_praticado":12,"v_definido":12,"custo_cos_lote":15324,"tecido":"Filipo","rend_pc":1.5,"rend_tec":1,"tipo_corte":"MT","preco_tec":18.98,"custo_tec_pc":28.47,"custo_tec_lote":36356.19,"preco_corte_pc":0.88,"custo_corte_lote":1123.82,"custo_total_pc":41.35,"custo_total_lote":52804.01,"pct_costura":0.2902,"pct_tecido":0.6885,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":137.42,"lucro_pc":92.07,"lucro_pct":0.67},{"produto":"SOFIA","classif":"Saia","qtd":37,"grau":3,"lead":7,"v_praticado":17,"v_definido":17,"custo_cos_lote":629,"tecido":"couro back suede","rend_pc":0.7,"rend_tec":1,"tipo_corte":"MT","preco_tec":null,"custo_tec_pc":null,"custo_tec_lote":0,"preco_corte_pc":0,"custo_corte_lote":0,"custo_total_pc":17,"custo_total_lote":629,"pct_costura":1,"pct_tecido":0,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":63.64,"lucro_pc":42.64,"lucro_pct":0.67},{"produto":"STAR","classif":"Blusa","qtd":801,"grau":1,"lead":15,"v_praticado":35,"v_definido":35,"custo_cos_lote":28035,"tecido":"fio tricot","rend_pc":1,"rend_tec":1,"tipo_corte":"UND","preco_tec":null,"custo_tec_pc":null,"custo_tec_lote":0,"preco_corte_pc":0,"custo_corte_lote":0,"custo_total_pc":35,"custo_total_lote":28035,"pct_costura":1,"pct_tecido":0,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":118.18,"lucro_pc":79.18,"lucro_pct":0.67},{"produto":"TAYLOR","classif":"Top","qtd":2025,"grau":2,"lead":4,"v_praticado":6.5,"v_definido":7,"custo_cos_lote":14175,"tecido":"tule myra","rend_pc":0.5,"rend_tec":7.35,"tipo_corte":"KG","preco_tec":39.9,"custo_tec_pc":2.7143,"custo_tec_lote":5496.43,"preco_corte_pc":0.849,"custo_corte_lote":1719.31,"custo_total_pc":10.5633,"custo_total_lote":21390.74,"pct_costura":0.6627,"pct_tecido":0.257,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":44.13,"lucro_pc":29.57,"lucro_pct":0.67},{"produto":"TEDDY","classif":"Calça","qtd":4571,"grau":3,"lead":5,"v_praticado":6,"v_definido":7,"custo_cos_lote":31997,"tecido":"HANKS PT","rend_pc":1.5,"rend_tec":1,"tipo_corte":"MT","preco_tec":17.32,"custo_tec_pc":25.98,"custo_tec_lote":118754.58,"preco_corte_pc":0.849,"custo_corte_lote":3880.98,"custo_total_pc":33.829,"custo_total_lote":154632.56,"pct_costura":0.2069,"pct_tecido":0.768,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":114.63,"lucro_pc":76.8,"lucro_pct":0.67},{"produto":"YAS","classif":"Top","qtd":1838,"grau":2,"lead":4,"v_praticado":5.5,"v_definido":6,"custo_cos_lote":11028,"tecido":"Viva Light Texneo","rend_pc":0.3,"rend_tec":2.4,"tipo_corte":"KG","preco_tec":61.5,"custo_tec_pc":7.6875,"custo_tec_lote":14129.63,"preco_corte_pc":0.849,"custo_corte_lote":1560.54,"custo_total_pc":14.5365,"custo_total_lote":26718.17,"pct_costura":0.4128,"pct_tecido":0.5288,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":56.17,"lucro_pc":37.63,"lucro_pct":0.67},{"produto":"ÍSIS","classif":"Vestido","qtd":176,"grau":4,"lead":7,"v_praticado":8,"v_definido":8,"custo_cos_lote":1408,"tecido":"Visco Slim lunelli","rend_pc":0.55,"rend_tec":2.35,"tipo_corte":"KG","preco_tec":41,"custo_tec_pc":9.5957,"custo_tec_lote":1688.85,"preco_corte_pc":0.849,"custo_corte_lote":149.43,"custo_total_pc":18.4448,"custo_total_lote":3246.28,"pct_costura":0.4337,"pct_tecido":0.5202,"icms_pc":null,"frete_pc":4,"desp_pc":null,"margem_pct":0.5,"preco_venda":68.01,"lucro_pc":45.57,"lucro_pct":0.67}];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let data = RAW.map(d => ({...d}));
+let activeTipo    = 'all';
+let activeTecido  = null;
+let sortCol       = 'qtd';
+let sortDir       = -1;
+let colVis        = { custos: true, tecido: true, preco: true };
+let margens       = { Top:50, Vestido:50, Body:50, Calça:50, Saia:50, Blusa:50 };
+let params        = { icms: 0.12, frete: 4, desp: 0.05 };
+
+const TIPOS = ['Top','Vestido','Body','Calça','Saia','Blusa'];
+const TIPO_COLORS = { Top:'#fbbf24', Vestido:'#34d399', Body:'#fb7185', Calça:'#6c8fff', Saia:'#c084fc', Blusa:'#2dd4bf' };
+
+// ── CALC PV ────────────────────────────────────────────────────────────────
+function calcPV(row) {
+  const m    = (margens[row.classif] || 50) / 100;
+  const icms = params.icms;
+  const desp = params.desp;
+  const den  = 1 - m - icms - desp;
+  if (den <= 0) return null;
+  const pv   = (row.custo_total_pc + params.frete) / den;
+  const lucro = pv - row.custo_total_pc - params.frete;
+  const icms_v = pv * icms;
+  const desp_v = pv * desp;
+  return { pv, lucro, lucro_pct: lucro / pv, icms_v, desp_v };
+}
+
+function recalcAll() {
+  params.icms  = parseFloat(document.getElementById('p-icms').value)  / 100 || 0.12;
+  params.frete = parseFloat(document.getElementById('p-frete').value) || 4;
+  params.desp  = parseFloat(document.getElementById('p-desp').value)  / 100 || 0.05;
+  data.forEach(row => {
+    const c = calcPV(row);
+    if (c) { row.preco_venda = c.pv; row.lucro_pc = c.lucro; row.lucro_pct = c.lucro_pct; }
+  });
+  renderAll();
+  toast('Recalculado com novos parâmetros');
+}
+
+// ── MARGENS ────────────────────────────────────────────────────────────────
+function buildMargemEditor() {
+  const el = document.getElementById('margem-editor');
+  el.innerHTML = TIPOS.map(t => `
+    <div class="margem-row">
+      <label class="margem-label">
+        <span class="dot dot-${t.toLowerCase().replace('ç','c')}" style="width:7px;height:7px;border-radius:50%;background:${TIPO_COLORS[t]}"></span>
+        ${t}
+      </label>
+      <input class="margem-input" id="m-${t}" type="number" value="${margens[t]}" min="0" max="99" step="1">
+      <span style="font-size:10px;color:var(--text3)">%</span>
+    </div>`).join('');
+}
+
+function applyMargens() {
+  TIPOS.forEach(t => {
+    const v = parseFloat(document.getElementById('m-'+t).value);
+    if (!isNaN(v)) margens[t] = v;
+  });
+  data.forEach(row => {
+    const c = calcPV(row);
+    if (c) { row.preco_venda = c.pv; row.lucro_pc = c.lucro; row.lucro_pct = c.lucro_pct; }
+  });
+  renderAll();
+  toast('Margens aplicadas');
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+function setTipo(t, btn) {
+  activeTipo   = t;
+  activeTecido = null;
+  document.querySelectorAll('[data-tipo]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function buildTecidoList(filter='') {
+  const tecidos = [...new Set(RAW.map(d => d.tecido).filter(Boolean))].sort();
+  const el = document.getElementById('tecido-list');
+  const q = filter.toLowerCase();
+  const filtered = tecidos.filter(t => t.toLowerCase().includes(q));
+  const todosTag = `<span class="tecido-tag${activeTecido===null?' active':''}" onclick="setTecido(null)">Todos</span>`;
+  el.innerHTML = todosTag + filtered.map(t => {
+    const count = RAW.filter(d => d.tecido === t).length;
+    const safe = t.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<span class="tecido-tag${activeTecido===t?' active':''}" onclick="setTecido('${safe}')"><span>${t}</span> <span class="tcnt">${count}</span></span>`;
+  }).join('');
+}
+function filterTecidos(v) { buildTecidoList(v); }
+
+function setTecido(t) {
+  activeTecido = (t === null || activeTecido === t) ? null : t;
+  buildTecidoList(document.getElementById('tecido-search').value || '');
+  renderAll();
+}
+
+// ── SORT ───────────────────────────────────────────────────────────────────
+function setSort(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  renderTable();
+}
+
+// ── COL TOGGLE ─────────────────────────────────────────────────────────────
+function toggleCol(btn) {
+  const k = btn.dataset.col;
+  colVis[k] = !colVis[k];
+  btn.classList.toggle('on', colVis[k]);
+  renderTable();
+}
+
+// ── INLINE MARGEM EDIT ─────────────────────────────────────────────────────
+function inlineMargemChange(prod, val) {
+  const row = data.find(d => d.produto === prod);
+  if (!row) return;
+  const m = parseFloat(val);
+  if (isNaN(m)) return;
+  margens[row.classif] = m;
+  document.getElementById('m-'+row.classif) && (document.getElementById('m-'+row.classif).value = m);
+  const c = calcPV(row);
+  if (c) { row.preco_venda = c.pv; row.lucro_pc = c.lucro; row.lucro_pct = c.lucro_pct; }
+  // recalc all of same type
+  data.filter(d => d.classif === row.classif).forEach(d => {
+    const cc = calcPV(d);
+    if (cc) { d.preco_venda = cc.pv; d.lucro_pc = cc.lucro; d.lucro_pct = cc.lucro_pct; }
+  });
+  updateKPIs();
+  updateCharts();
+}
+
+// ── FILTER DATA ────────────────────────────────────────────────────────────
+function filteredData() {
+  const q = (document.getElementById('prod-search')?.value || '').toLowerCase();
+  return data
+    .filter(d => activeTipo === 'all' || d.classif === activeTipo)
+    .filter(d => !activeTecido || d.tecido === activeTecido)
+    .filter(d => !q || d.produto.toLowerCase().includes(q) || d.tecido.toLowerCase().includes(q))
+    .sort((a,b) => {
+      let av = a[sortCol], bv = b[sortCol];
+      if (av === null || av === undefined) av = -Infinity;
+      if (bv === null || bv === undefined) bv = -Infinity;
+      return typeof av === 'string' ? av.localeCompare(bv)*sortDir : (av-bv)*sortDir;
+    });
+}
+
+// ── KPIs ───────────────────────────────────────────────────────────────────
+function updateKPIs() {
+  const fd = filteredData();
+  let receita=0, custo=0, lucro=0, pvSum=0, custoSum=0, qtdSum=0;
+  fd.forEach(d => {
+    const q = d.qtd;
+    receita  += d.preco_venda * q;
+    custo    += d.custo_total_lote;
+    lucro    += d.lucro_pc * q;
+    pvSum    += d.preco_venda * q;
+    custoSum += d.custo_total_pc * q;
+    qtdSum   += q;
+  });
+  const fmt = v => v >= 1e6 ? 'R$'+(v/1e6).toFixed(2)+'M' : v >= 1e3 ? 'R$'+(v/1e3).toFixed(1)+'k' : 'R$'+v.toFixed(0);
+  document.getElementById('kpi-receita').textContent = fmt(receita);
+  document.getElementById('kpi-custo').textContent   = fmt(custo);
+  document.getElementById('kpi-lucro').textContent   = fmt(lucro);
+  document.getElementById('kpi-margem').textContent  = receita > 0 ? (lucro/receita*100).toFixed(1)+'%' : '—';
+  document.getElementById('kpi-ticket').textContent  = qtdSum > 0 ? 'R$'+(pvSum/qtdSum).toFixed(2) : '—';
+  document.getElementById('kpi-custo-pc').textContent = qtdSum > 0 ? 'R$'+(custoSum/qtdSum).toFixed(2) : '—';
+  document.getElementById('result-count').textContent = fd.length + ' produto' + (fd.length!==1?'s':'');
+  // update sidebar counts
+  TIPOS.forEach(t => {
+    const el = document.getElementById('cnt-'+t);
+    if (el) el.textContent = data.filter(d=>d.classif===t).length;
+  });
+}
+
+// ── CHARTS ─────────────────────────────────────────────────────────────────
+function updateCharts() {
+  const fd = filteredData();
+  // Chart 1: PV por tipo (top 6 por qtd)
+  const byTipo = {};
+  fd.forEach(d => { byTipo[d.classif] = (byTipo[d.classif]||0) + d.qtd*d.preco_venda; });
+  const sortedTipo = Object.entries(byTipo).sort((a,b)=>b[1]-a[1]);
+  const maxTipo = Math.max(...sortedTipo.map(e=>e[1]),1);
+
+  // Chart 2: Top 8 produtos por PV
+  const top8 = [...fd].sort((a,b)=>b.preco_venda-a.preco_venda).slice(0,8);
+  const maxPV = Math.max(...top8.map(d=>d.preco_venda),1);
+
+  const fmt2 = v => v >= 1e6 ? 'R$'+(v/1e6).toFixed(1)+'M' : v >= 1e3 ? 'R$'+(v/1e3).toFixed(0)+'k' : 'R$'+v.toFixed(0);
+
+  document.getElementById('charts-row').innerHTML = `
+    <div class="chart-card">
+      <h4>Receita por tipo</h4>
+      <div class="bar-chart">
+        ${sortedTipo.map(([t,v]) => `
+          <div class="bar-row">
+            <div class="bar-row-label">${t}</div>
+            <div class="bar-row-bar"><div class="bar-row-fill" style="width:${(v/maxTipo*100).toFixed(1)}%;background:${TIPO_COLORS[t]||'#6c8fff'}"></div></div>
+            <div class="bar-row-val">${fmt2(v)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="chart-card">
+      <h4>Maior preço de venda / pç</h4>
+      <div class="bar-chart">
+        ${top8.map(d => `
+          <div class="bar-row">
+            <div class="bar-row-label">${d.produto}</div>
+            <div class="bar-row-bar"><div class="bar-row-fill" style="width:${(d.preco_venda/maxPV*100).toFixed(1)}%;background:${TIPO_COLORS[d.classif]||'#6c8fff'}"></div></div>
+            <div class="bar-row-val">R$${d.preco_venda.toFixed(2)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── TABLE ─────────────────────────────────────────────────────────────────
+const COLS = [
+  { key:'produto',         label:'Produto',       grp:'base',   fmt: (v,d) => `<span style="font-weight:500">${v}</span>` },
+  { key:'classif',         label:'Tipo',          grp:'base',   fmt: v => `<span class="badge badge-${v.toLowerCase().replace('ç','c')}">${v}</span>` },
+  { key:'qtd',             label:'Qtd Março',     grp:'base',   fmt: v => v?.toLocaleString('pt-BR') },
+  { key:'custo_total_pc',  label:'Custo/pç',      grp:'custos', fmt: v => v!=null?`<span class="val-amber">R$${v.toFixed(2)}</span>`:'<span class="val-muted">—</span>' },
+  { key:'v_definido',      label:'R$ Costura',    grp:'custos', fmt: v => v!=null?`R$${Number(v).toFixed(2)}`:'—' },
+  { key:'preco_corte_pc',  label:'R$ Corte/pç',   grp:'custos', fmt: v => v!=null&&v>0?`R$${Number(v).toFixed(2)}`:'—' },
+  { key:'custo_tec_pc',    label:'R$ Tecido/pç',  grp:'custos', fmt: v => v!=null?`R$${Number(v).toFixed(2)}`:'—' },
+  { key:'tecido',          label:'Tecido',        grp:'tecido', fmt: v => `<span style="color:var(--text2);font-size:11px">${v||'—'}</span>` },
+  { key:'grau',            label:'Dific.',        grp:'tecido', fmt: v => {
+      if (v==null) return '—';
+      const g = parseInt(v);
+      const clr = g<=2?'#34d399':g<=4?'#fbbf24':'#f87171';
+      return `<div class="grau-wrap"><div class="grau-bar"><div class="grau-fill" style="width:${(g/8*100).toFixed(0)}%;background:${clr}"></div></div><span style="font-size:11px;color:${clr}">${g}</span></div>`;
+    }},
+  { key:'margem_pct',      label:'Margem %',      grp:'preco',  fmt: (v,d) => {
+      const m = margens[d.classif] || 50;
+      return `<div class="td-margem"><input type="number" value="${m}" min="0" max="99" step="1" onchange="inlineMargemChange('${d.produto}',this.value)" onclick="event.stopPropagation()"><span style="font-size:10px;color:var(--text3)">%</span></div>`;
+    }},
+  { key:'preco_venda',     label:'Preço Venda',   grp:'preco',  fmt: v => v!=null?`<span class="val-accent" style="font-weight:500">R$${Number(v).toFixed(2)}</span>`:'<span class="val-muted">—</span>' },
+  { key:'lucro_pc',        label:'Lucro/pç',      grp:'preco',  fmt: v => v!=null?`<span class="val-green">R$${Number(v).toFixed(2)}</span>`:'—' },
+  { key:'lucro_pct',       label:'Lucro %',       grp:'preco',  fmt: (v,d) => {
+      if (v==null) return '—';
+      const pct = (v*100).toFixed(1);
+      const clr = v>=0.6?'#34d399':v>=0.4?'#fbbf24':'#f87171';
+      return `<div class="lucro-bar-wrap"><div class="lucro-bar-bg"><div class="lucro-bar-fill" style="width:${Math.min(v*100,100).toFixed(1)}%;background:${clr}"></div></div><span style="color:${clr};font-size:11px;font-family:var(--mono)">${pct}%</span></div>`;
+    }},
+];
+
+function visibleCols() {
+  return COLS.filter(c => {
+    if (c.grp === 'base') return true;
+    if (c.grp === 'custos') return colVis.custos;
+    if (c.grp === 'tecido') return colVis.tecido;
+    if (c.grp === 'preco') return colVis.preco;
+    return true;
+  });
+}
+
+function renderTable() {
+  const fd    = filteredData();
+  const vcols = visibleCols();
+
+  // Thead
+  document.getElementById('main-thead').innerHTML = `<tr>${vcols.map(c => {
+    const cls = sortCol===c.key ? (sortDir>0?'sort-asc':'sort-desc') : '';
+    return `<th class="${cls}" onclick="setSort('${c.key}')">${c.label}</th>`;
+  }).join('')}</tr>`;
+
+  // Tbody
+  if (!fd.length) {
+    document.getElementById('main-tbody').innerHTML = `<tr><td colspan="${vcols.length}" class="empty">Nenhum produto encontrado</td></tr>`;
+    return;
+  }
+  document.getElementById('main-tbody').innerHTML = fd.map(d => `
+    <tr>
+      ${vcols.map(c => {
+        const v    = d[c.key];
+        const cell = c.fmt ? c.fmt(v,d) : (v!=null?v:'—');
+        const al   = ['qtd','custo_total_pc','v_definido','preco_corte_pc','custo_tec_pc','preco_venda','lucro_pc'].includes(c.key) ? ' right' : '';
+        return `<td class="${al}">${cell}</td>`;
+      }).join('')}
+    </tr>`).join('');
+
+  updateKPIs();
+  updateCharts();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderTable();
+  buildTecidoList();
+  updateKPIs();
+  updateCharts();
+}
+
+buildMargemEditor();
+renderAll();
+</script>
+</body>
+</html>
