@@ -92,6 +92,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .lucro-input::placeholder { color: var(--text3); font-weight: 400; }
 .lucro-result { font-size: 10px; color: var(--text3); font-family: var(--mono); min-width: 36px; text-align: right; }
 .lucro-result.has-val { color: var(--green); font-weight: 500; }
+.pv-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.pv-input { width: 54px; min-width: 0; background: var(--bg2); border: 1.5px solid #d97706; border-radius: 5px; color: #d97706; font-family: var(--mono); font-size: 12px; font-weight: 500; padding: 4px 6px; text-align: right; outline: none; transition: all .15s; box-sizing: border-box; }
+.pv-input:focus { border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,.15); }
+.pv-input::placeholder { color: var(--text3); font-weight: 400; }
+.pv-result { font-size: 10px; color: var(--text3); font-family: var(--mono); min-width: 36px; text-align: right; line-height: 1.4; }
+.pv-result.has-val { color: #7c3aed; font-weight: 500; }
 
 /* ── PARAM EDITOR ── */
 .param-grid { display: flex; flex-direction: column; gap: 6px; }
@@ -301,6 +307,13 @@ td.center { text-align: center; }
         <div id="lucro-editor"></div>
         <button class="apply-btn" style="background:var(--green);margin-top:6px" onclick="applyLucros()">Calcular Margens pelo Lucro</button>
       </div>
+
+      <!-- Preço de venda alvo por tipo -->
+      <div class="pv-section">
+        <div class="lucro-header">Preço de venda alvo R$/pç</div>
+        <div id="pv-editor"></div>
+        <button class="apply-btn" style="background:#d97706;margin-top:6px" onclick="applyPVAlvo()">Calcular pelo Preço de Venda</button>
+      </div>
     </div>
 
     <!-- Parâmetros Globais -->
@@ -373,6 +386,7 @@ let sortDir       = -1;
 let colVis        = { custos: true, tecido: true, preco: true };
 let margens       = { Top:50, Vestido:50, Body:50, Calça:50, Saia:50, Blusa:50 };
 let lucroMeta     = { Top:'', Vestido:'', Body:'', Calça:'', Saia:'', Blusa:'' };
+let pvMeta        = { Top:'', Vestido:'', Body:'', Calça:'', Saia:'', Blusa:'' };
 let params        = { icms: 0.12, frete: 4, desp: 0.05 };
 
 const TIPOS = ['Top','Vestido','Body','Calça','Saia','Blusa'];
@@ -494,6 +508,91 @@ function applyLucros() {
   renderAll();
   buildLucroEditor();
   toast(`Margens recalculadas para ${alterados} tipo(s) pelo lucro alvo`);
+}
+
+function buildPVEditor() {
+  const el = document.getElementById('pv-editor');
+  if (!el) return;
+  el.innerHTML = TIPOS.map(t => {
+    const meta = pvMeta[t];
+    const rows = data.filter(d => d.classif === t);
+    // PV atual médio ponderado
+    const pvAtual = rows.length
+      ? rows.reduce((s,d) => s + d.preco_venda * d.qtd, 0) / rows.reduce((s,d) => s+d.qtd, 0)
+      : null;
+    const hint = pvAtual ? pvAtual.toFixed(0) : '';
+    const preview = meta ? calcFromPV(t, parseFloat(meta)) : null;
+    return `<div class="lucro-row">
+      <label class="lucro-label">
+        <span style="width:7px;height:7px;border-radius:50%;background:${TIPO_COLORS[t]};display:inline-block;flex-shrink:0"></span>
+        ${t}
+      </label>
+      <input class="pv-input" id="pv-${t}" type="number" min="0" step="0.5"
+        placeholder="${hint}"
+        value="${meta}"
+        title="PV atual médio: R$${pvAtual ? pvAtual.toFixed(2) : '—'}"
+        oninput="previewPV('${t}', this.value)">
+      <span style="font-size:10px;color:var(--text3)">R$</span>
+      <span class="pv-result${preview ? ' has-val' : ''}" id="pv-res-${t}">${preview ? preview.label : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+function calcFromPV(tipo, pvAlvo) {
+  // Dado PV fixo, calcular: margem, lucro R$, lucro %
+  const rows = data.filter(d => d.classif === tipo);
+  if (!rows.length || !pvAlvo || pvAlvo <= 0) return null;
+  const custoMed = rows.reduce((s,d) => s + d.custo_total_pc * d.qtd, 0) / rows.reduce((s,d) => s+d.qtd, 0);
+  const frete = params.frete;
+  const icms  = params.icms;
+  const desp  = params.desp;
+  const lucro = pvAlvo - custoMed - frete;
+  const margem = 1 - (custoMed + frete) / pvAlvo - icms - desp;
+  if (lucro <= 0 || margem <= 0) return { label: '—', margem: null, lucro: null };
+  return {
+    label: `L:R$${lucro.toFixed(0)} M:${(margem*100).toFixed(1)}%`,
+    margem: parseFloat((margem*100).toFixed(1)),
+    lucro: parseFloat(lucro.toFixed(2))
+  };
+}
+
+function previewPV(tipo, val) {
+  const el = document.getElementById('pv-res-'+tipo);
+  if (!el) return;
+  const v = parseFloat(val);
+  pvMeta[tipo] = val;
+  if (!val || isNaN(v) || v <= 0) { el.textContent = ''; el.className = 'pv-result'; return; }
+  const res = calcFromPV(tipo, v);
+  if (!res || res.label === '—') { el.textContent = '—'; el.className = 'pv-result'; return; }
+  el.textContent = res.label;
+  el.className = 'pv-result has-val';
+}
+
+function applyPVAlvo() {
+  let alterados = 0;
+  TIPOS.forEach(t => {
+    const inp = document.getElementById('pv-'+t);
+    if (!inp) return;
+    const v = parseFloat(inp.value);
+    if (!inp.value || isNaN(v) || v <= 0) return;
+    const res = calcFromPV(t, v);
+    if (!res || !res.margem) return;
+    // Aplicar PV fixo a todos os produtos do tipo
+    data.filter(d => d.classif === t).forEach(d => {
+      d.preco_venda  = v;
+      d.lucro_pc     = v - d.custo_total_pc - params.frete;
+      d.lucro_pct    = d.lucro_pc / v;
+    });
+    // Atualizar margem correspondente
+    margens[t] = res.margem;
+    document.getElementById('m-'+t) && (document.getElementById('m-'+t).value = res.margem.toFixed(1));
+    pvMeta[t] = inp.value;
+    alterados++;
+  });
+  if (!alterados) { toast('Preencha ao menos um preço de venda alvo'); return; }
+  renderAll();
+  buildPVEditor();
+  toast(`Preços aplicados para ${alterados} tipo(s) — lucro e margem recalculados`);
 }
 
 function buildMargemEditor() {
@@ -756,6 +855,7 @@ function renderAll() {
 
 buildMargemEditor();
 buildLucroEditor();
+buildPVEditor();
 renderAll();
 </script>
 </body>
