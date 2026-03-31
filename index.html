@@ -83,6 +83,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .margem-input:focus { border-color: var(--accent); }
 .apply-btn { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 7px; padding: 9px; font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity .15s; margin-top: 4px; }
 .apply-btn:hover { opacity: .85; }
+.lucro-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.lucro-header { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 8px; }
+.lucro-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.lucro-label { font-size: 11px; color: var(--text2); flex: 1; display: flex; align-items: center; gap: 6px; }
+.lucro-input { width: 54px; min-width: 0; background: var(--bg2); border: 1.5px solid var(--accent); border-radius: 5px; color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 500; padding: 4px 6px; text-align: right; outline: none; transition: all .15s; box-sizing: border-box; }
+.lucro-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,114,227,.15); }
+.lucro-input::placeholder { color: var(--text3); font-weight: 400; }
+.lucro-result { font-size: 10px; color: var(--text3); font-family: var(--mono); min-width: 36px; text-align: right; }
+.lucro-result.has-val { color: var(--green); font-weight: 500; }
 
 /* ── PARAM EDITOR ── */
 .param-grid { display: flex; flex-direction: column; gap: 6px; }
@@ -285,6 +294,13 @@ td.center { text-align: center; }
       <h3>Margem por Tipo</h3>
       <div class="margem-editor" id="margem-editor"></div>
       <button class="apply-btn" onclick="applyMargens()">Aplicar Margens</button>
+
+      <!-- Lucro esperado por tipo -->
+      <div class="lucro-section">
+        <div class="lucro-header">Lucro alvo R$/pç por tipo</div>
+        <div id="lucro-editor"></div>
+        <button class="apply-btn" style="background:var(--green);margin-top:6px" onclick="applyLucros()">Calcular Margens pelo Lucro</button>
+      </div>
     </div>
 
     <!-- Parâmetros Globais -->
@@ -356,6 +372,7 @@ let sortCol       = 'qtd';
 let sortDir       = -1;
 let colVis        = { custos: true, tecido: true, preco: true };
 let margens       = { Top:50, Vestido:50, Body:50, Calça:50, Saia:50, Blusa:50 };
+let lucroMeta     = { Top:'', Vestido:'', Body:'', Calça:'', Saia:'', Blusa:'' };
 let params        = { icms: 0.12, frete: 4, desp: 0.05 };
 
 const TIPOS = ['Top','Vestido','Body','Calça','Saia','Blusa'];
@@ -388,6 +405,97 @@ function recalcAll() {
 }
 
 // ── MARGENS ────────────────────────────────────────────────────────────────
+function buildLucroEditor() {
+  const el = document.getElementById('lucro-editor');
+  if (!el) return;
+  el.innerHTML = TIPOS.map(t => {
+    const meta = lucroMeta[t];
+    // Calcular custo médio ponderado do tipo para dar hint
+    const rows = data.filter(d => d.classif === t);
+    const custoMed = rows.length
+      ? rows.reduce((s,d) => s + d.custo_total_pc * d.qtd, 0) / rows.reduce((s,d) => s+d.qtd, 0)
+      : null;
+    // Lucro atual médio ponderado
+    const lucroAtual = rows.length
+      ? rows.reduce((s,d) => s + d.lucro_pc * d.qtd, 0) / rows.reduce((s,d) => s+d.qtd, 0)
+      : null;
+    const hint = lucroAtual ? lucroAtual.toFixed(0) : '';
+    return `<div class="lucro-row">
+      <label class="lucro-label">
+        <span style="width:7px;height:7px;border-radius:50%;background:${TIPO_COLORS[t]};display:inline-block;flex-shrink:0"></span>
+        ${t}
+      </label>
+      <input class="lucro-input" id="lm-${t}" type="number" min="0" step="1"
+        placeholder="${hint}"
+        value="${meta}"
+        title="Custo médio: R$${custoMed ? custoMed.toFixed(2) : '—'}"
+        oninput="previewMargem('${t}', this.value)">
+      <span style="font-size:10px;color:var(--text3)">R$</span>
+      <span class="lucro-result" id="lm-res-${t}">${meta ? calcMargemParaLucro(t,parseFloat(meta)) : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+function calcMargemParaLucro(tipo, lucroAlvo) {
+  // PV = (custo + frete) / (1 - m - icms - desp)
+  // lucro = PV - custo - frete
+  // lucro = (custo+frete)/(1-m-icms-desp) - (custo+frete)
+  // lucro = (custo+frete) * [1/(1-m-icms-desp) - 1]
+  // Usando custo médio ponderado do tipo
+  const rows = data.filter(d => d.classif === tipo);
+  if (!rows.length) return '';
+  const custoMed = rows.reduce((s,d) => s + d.custo_total_pc * d.qtd, 0) / rows.reduce((s,d) => s+d.qtd, 0);
+  const base = custoMed + params.frete;
+  const icms = params.icms;
+  const desp = params.desp;
+  // lucroAlvo = base * m / (1 - icms - desp - m)
+  // lucroAlvo * (1 - icms - desp - m) = base * m
+  // lucroAlvo - lucroAlvo*(icms+desp) - lucroAlvo*m = base*m
+  // lucroAlvo - lucroAlvo*(icms+desp) = m*(base + lucroAlvo)
+  // m = (lucroAlvo - lucroAlvo*(icms+desp)) / (base + lucroAlvo)
+  const m = (lucroAlvo * (1 - icms - desp)) / (base + lucroAlvo);
+  if (m <= 0 || m >= 1) return '—';
+  return `→ ${(m*100).toFixed(1)}%`;
+}
+
+function previewMargem(tipo, val) {
+  const el = document.getElementById('lm-res-'+tipo);
+  if (!el) return;
+  const v = parseFloat(val);
+  if (!val || isNaN(v) || v <= 0) { el.textContent = ''; el.className = 'lucro-result'; return; }
+  const res = calcMargemParaLucro(tipo, v);
+  el.textContent = res;
+  el.className = 'lucro-result' + (res && res !== '—' ? ' has-val' : '');
+  lucroMeta[tipo] = val;
+}
+
+function applyLucros() {
+  let alterados = 0;
+  TIPOS.forEach(t => {
+    const inp = document.getElementById('lm-'+t);
+    if (!inp) return;
+    const v = parseFloat(inp.value);
+    if (!inp.value || isNaN(v) || v <= 0) return;
+    const res = calcMargemParaLucro(t, v);
+    if (!res || res === '—') return;
+    const m = parseFloat(res.replace('→ ','').replace('%',''));
+    if (!isNaN(m) && m > 0) {
+      margens[t] = parseFloat(m.toFixed(1));
+      document.getElementById('m-'+t) && (document.getElementById('m-'+t).value = margens[t].toFixed(1));
+      lucroMeta[t] = inp.value;
+      alterados++;
+    }
+  });
+  if (!alterados) { toast('Preencha ao menos um lucro alvo'); return; }
+  data.forEach(row => {
+    const c = calcPV(row);
+    if (c) { row.preco_venda = c.pv; row.lucro_pc = c.lucro; row.lucro_pct = c.lucro_pct; }
+  });
+  renderAll();
+  buildLucroEditor();
+  toast(`Margens recalculadas para ${alterados} tipo(s) pelo lucro alvo`);
+}
+
 function buildMargemEditor() {
   const el = document.getElementById('margem-editor');
   el.innerHTML = TIPOS.map(t => `
@@ -647,6 +755,7 @@ function renderAll() {
 }
 
 buildMargemEditor();
+buildLucroEditor();
 renderAll();
 </script>
 </body>
