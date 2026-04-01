@@ -1017,22 +1017,30 @@ function getMData() {
     v.cor_pc    = v.corte / q;
     v.tec_pc    = v.tecido / q;
 
-    // PV simulado ou base
-    const simPV = mState.pvSim[cat];
+    // PV simulado: chave é sempre o TIPO do produto
+    // Para view=tipo: cat é o tipo direto
+    // Para view=tecido: não há tipo direto → não aplicar sim (mistura tipos)
+    // Para view=produto: usar v.classif como chave do pvSim
+    let tipoKey = null;
+    if (mState.view === 'tipo')    tipoKey = cat;
+    else if (mState.view === 'produto') tipoKey = v.classif || null;
+    // Para tecido: tipoKey fica null (não simula por tecido)
+
+    const simPV = tipoKey ? mState.pvSim[tipoKey] : null;
     if (simPV && simPV > 0) {
-      v.pv_sim   = simPV;
-      v.lucro_sim = lucroFromPV(simPV, v.custo_pc);
-      v.venda_sim = simPV * q;
+      v.pv_sim          = simPV;
+      v.lucro_sim       = lucroFromPV(simPV, v.custo_pc);
+      v.venda_sim       = simPV * q;
       v.lucro_sim_total = v.lucro_sim * q;
       v.lucro_pct_sim   = simPV > 0 ? v.lucro_sim / simPV * 100 : 0;
-      v.usando_sim = true;
+      v.usando_sim      = true;
     } else {
-      v.pv_sim   = v.venda / q;
-      v.lucro_sim = v.lucro / q;
-      v.venda_sim = v.venda;
+      v.pv_sim          = v.venda / q;
+      v.lucro_sim       = v.lucro / q;
+      v.venda_sim       = v.venda;
       v.lucro_sim_total = v.lucro;
       v.lucro_pct_sim   = v.venda > 0 ? v.lucro / v.venda * 100 : 0;
-      v.usando_sim = false;
+      v.usando_sim      = false;
     }
     v.pv_medio  = v.pv_sim;
     v.lucro_pc  = v.lucro_sim;
@@ -1049,23 +1057,22 @@ function buildSide() {
     let q=0; Object.values(MENSAL.por_tipo[m]||{}).forEach(v=>q+=v.qtd); totByMes[m]=q;
   });
 
-  const allGroups = mState.view==='tecido'
-    ? [...new Set(meses.flatMap(m=>Object.keys(MENSAL.por_tecido[m]||{})))]
-    : mState.view==='produto'
-    ? [...new Set(meses.flatMap(m=>Object.keys(MENSAL.por_produto[m]||{})))].sort()
-    : ['Top','Vestido','Body','Calça','Saia','Blusa','Tricot'];
+  // Painel de simulação SEMPRE por tipo de produto (independe do view)
+  const TIPOS_SIM = ['Top','Vestido','Body','Calça','Saia','Blusa','Tricot'];
 
-  const palette = mState.view==='tipo' ? TIPO_PAL_M : Object.fromEntries(allGroups.map((g,i)=>[g,TEC_PAL[i%TEC_PAL.length]]));
-
-  const pvRows = allGroups.map(g => {
-    const c  = palette[g]||'#888';
-    const cv = mState.pvSim[g] ? mState.pvSim[g] : '';
+  const pvRows = TIPOS_SIM.map(t => {
+    const c  = TIPO_PAL_M[t]||'#888';
+    const cv = mState.pvSim[t] ? mState.pvSim[t] : '';
+    const pvAtual = getPVAtualTipo(t);
     return `<div class="pv-sim-row">
       <span class="pv-sim-lbl" style="display:flex;align-items:center;gap:5px">
         <span style="width:7px;height:7px;border-radius:50%;background:${c};flex-shrink:0;display:inline-block"></span>
-        ${g.length>12?g.slice(0,12)+'…':g}
+        ${t}
       </span>
-      <input class="pv-sim-inp" id="pvsim-${encodeURIComponent(g)}" type="number" min="0" step="0.5" placeholder="—" value="${cv}" title="PV atual: ${fRp(getPVAtual(g))}">
+      <input class="pv-sim-inp" id="pvsim-${encodeURIComponent(t)}" type="number" min="0" step="0.5"
+        placeholder="${pvAtual>0?pvAtual.toFixed(0):'—'}"
+        value="${cv}"
+        title="PV base ${t}: ${pvAtual>0?fRp(pvAtual):'—'}">
     </div>`;
   }).join('');
 
@@ -1090,7 +1097,7 @@ function buildSide() {
     <div class="pv-sim-panel">
       <h5>Simular Preço de Venda</h5>
       <div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.5">
-        Digite um PV por grupo para ver lucro e margem simulados em tempo real.
+        PV alvo por tipo de produto. Afeta todos os grupos ao filtrar por tecido ou produto individual.
       </div>
       ${pvRows}
       <button class="sim-apply-btn" onclick="applyPVSim()">Aplicar simulação</button>
@@ -1099,21 +1106,27 @@ function buildSide() {
 }
 
 function getPVAtual(grupo) {
+  // Mantido por compatibilidade — usa por_tipo
+  return getPVAtualTipo(grupo);
+}
+
+function getPVAtualTipo(tipo) {
+  // PV médio ponderado do TIPO, sempre usando por_tipo
   const meses = MENSAL.meses||[];
-  const key = mState.view==='tecido'?'por_tecido':mState.view==='produto'?'por_produto':'por_tipo';
   let totalVenda=0, totalQtd=0;
   (mState.mes?[mState.mes]:meses).forEach(m=>{
-    const v = (MENSAL[key][m]||{})[grupo];
+    const v = (MENSAL.por_tipo[m]||{})[tipo];
     if(v){totalVenda+=v.venda||0; totalQtd+=v.qtd||0;}
   });
   return totalQtd>0 ? totalVenda/totalQtd : 0;
 }
 
 function applyPVSim() {
-  const allGroups = Object.keys(getMData());
-  allGroups.forEach(g=>{
-    const inp=document.getElementById('pvsim-'+encodeURIComponent(g));
-    if(inp){const v=parseFloat(inp.value); if(v>0)mState.pvSim[g]=v; else delete mState.pvSim[g];}
+  // Sempre lê dos 7 tipos fixos
+  const TIPOS_SIM = ['Top','Vestido','Body','Calça','Saia','Blusa','Tricot'];
+  TIPOS_SIM.forEach(t=>{
+    const inp=document.getElementById('pvsim-'+encodeURIComponent(t));
+    if(inp){const v=parseFloat(inp.value); if(v>0) mState.pvSim[t]=v; else delete mState.pvSim[t];}
   });
   renderMensal();
   toast('Simulação aplicada');
@@ -1127,7 +1140,7 @@ function resetPVSim() {
 }
 
 function setMes(m)  { mState.mes=m; buildSide(); renderMensal(); }
-function setView(v) { mState.view=v; mState.sortCol='venda'; mState.pvSim={}; buildSide(); renderMensal(); }
+function setView(v) { mState.view=v; mState.sortCol='venda'; buildSide(); renderMensal(); }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function renderMensal() {
@@ -1136,6 +1149,9 @@ function renderMensal() {
   const mesLbl = mState.mes ? (MES_FULL[mState.mes]||mState.mes) : 'Acumulado Jan–Mar 2026';
   const viewLbl = mState.view==='tipo'?'Tipo de Produto':mState.view==='tecido'?'Tecido Principal':'Produto Individual';
   const simAtivo = Object.keys(mState.pvSim).length>0;
+  const simInfo = simAtivo && mState.view==='tecido'
+    ? '<span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:500;margin-left:6px">Simulação por tipo aplicada nos produtos deste tecido</span>'
+    : '';
 
   // Totais
   let tQtd=0,tCos=0,tCor=0,tTec=0,tCus=0,tVen=0,tLuc=0;
@@ -1222,8 +1238,8 @@ function renderMensal() {
   document.getElementById('men-body').innerHTML = `
     <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">${viewLbl} — ${mesLbl}</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      ${simAtivo?'<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;margin-right:6px">▶ SIMULAÇÃO ATIVA</span>':''
-      }Valores calculados com margem ${(mState.margem*100).toFixed(0)}% · ICMS ${(mState.icms*100).toFixed(0)}% · Frete R$${mState.frete} · Despesa ${(mState.desp*100).toFixed(0)}%</div>
+      ${simAtivo?'<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;margin-right:6px">▶ SIMULAÇÃO POR TIPO ATIVA</span>':''}${simInfo||''}
+      Valores calculados com margem ${(mState.margem*100).toFixed(0)}% · ICMS ${(mState.icms*100).toFixed(0)}% · Frete R$${mState.frete} · Despesa ${(mState.desp*100).toFixed(0)}%</div>
 
     <!-- KPIs totais -->
     <div class="men-kpi-bar">
