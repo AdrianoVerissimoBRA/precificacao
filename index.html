@@ -995,44 +995,130 @@ function lucroFromPV(pv, custo_pc) {
 
 // ── obter dados agregados ────────────────────────────────────────────────────
 function getMData() {
-  const meses = MENSAL.meses || [];
-  const key   = mState.view === 'tecido' ? 'por_tecido' : mState.view === 'produto' ? 'por_produto' : 'por_tipo';
+  const meses   = MENSAL.meses || [];
   const srcMeses = mState.mes ? [mState.mes] : meses;
+  const simAtivo = Object.keys(mState.pvSim).length > 0;
 
-  // Agregar
-  const agg = {};
+  // Para tecido e produto: sempre partir de por_produto para ter classif+tec granular
+  // Para tipo: usar por_tipo diretamente (mais eficiente)
+
+  if (mState.view === 'tipo') {
+    const agg = {};
+    srcMeses.forEach(m => {
+      Object.entries(MENSAL.por_tipo[m] || {}).forEach(([cat, v]) => {
+        if (!agg[cat]) agg[cat] = {qtd:0,costura:0,corte:0,tecido:0,custo:0,venda:0,lucro:0,classif:cat,tec:''};
+        ['qtd','costura','corte','tecido','custo','venda','lucro'].forEach(k => agg[cat][k] += v[k]||0);
+      });
+    });
+    return _applySimTipo(agg, 'tipo');
+  }
+
+  // Para tecido e produto: partir dos dados granulares por produto
+  // Agregar primeiro por produto com pvSim aplicado
+  const prodAgg = {};
   srcMeses.forEach(m => {
-    Object.entries(MENSAL[key][m] || {}).forEach(([cat, v]) => {
-      if (!agg[cat]) agg[cat] = {qtd:0,costura:0,corte:0,tecido:0,custo:0,venda:0,lucro:0,classif:v.classif||'',tec:v.tec||''};
-      ['qtd','costura','corte','tecido','custo','venda','lucro'].forEach(k => agg[cat][k]+=v[k]||0);
+    Object.entries(MENSAL.por_produto[m] || {}).forEach(([prod, v]) => {
+      if (!prodAgg[prod]) prodAgg[prod] = {
+        qtd:0,costura:0,corte:0,tecido:0,custo:0,
+        classif: v.classif||'', tec: v.tec||''
+      };
+      ['qtd','costura','corte','tecido','custo'].forEach(k => prodAgg[prod][k] += v[k]||0);
     });
   });
 
-  // Recalcular derivados + simular PV customizado
-  Object.keys(agg).forEach(cat => {
-    const v  = agg[cat];
-    const q  = v.qtd || 1;
-    v.custo_pc  = v.custo / q;
-    v.cos_pc    = v.costura / q;
-    v.cor_pc    = v.corte / q;
-    v.tec_pc    = v.tecido / q;
-
-    // PV simulado: chave é sempre o TIPO do produto
-    // Para view=tipo: cat é o tipo direto
-    // Para view=tecido: não há tipo direto → não aplicar sim (mistura tipos)
-    // Para view=produto: usar v.classif como chave do pvSim
-    let tipoKey = null;
-    if (mState.view === 'tipo')    tipoKey = cat;
-    else if (mState.view === 'produto') tipoKey = v.classif || null;
-    // Para tecido: tipoKey fica null (não simula por tecido)
-
-    const simPV = tipoKey ? mState.pvSim[tipoKey] : null;
+  // Para cada produto: calcular venda e lucro com PV simulado do seu tipo
+  Object.entries(prodAgg).forEach(([prod, v]) => {
+    const q       = v.qtd || 1;
+    v.custo_pc    = v.custo / q;
+    const simPV   = simAtivo ? mState.pvSim[v.classif] : null;
     if (simPV && simPV > 0) {
       v.pv_sim          = simPV;
       v.lucro_sim       = lucroFromPV(simPV, v.custo_pc);
       v.venda_sim       = simPV * q;
       v.lucro_sim_total = v.lucro_sim * q;
-      v.lucro_pct_sim   = simPV > 0 ? v.lucro_sim / simPV * 100 : 0;
+      v.lucro_pct_sim   = v.lucro_sim / simPV * 100;
+      v.usando_sim      = true;
+    } else {
+      // PV base = custo / (1 - margem - icms - desp) - sem sim
+      const pv0         = pvFromCusto(v.custo_pc);
+      v.pv_sim          = pv0;
+      v.lucro_sim       = lucroFromPV(pv0, v.custo_pc);
+      v.venda_sim       = pv0 * q;
+      v.lucro_sim_total = v.lucro_sim * q;
+      v.lucro_pct_sim   = pv0 > 0 ? v.lucro_sim / pv0 * 100 : 0;
+      v.usando_sim      = false;
+    }
+  });
+
+  if (mState.view === 'produto') {
+    // Derivados finais por produto
+    Object.values(prodAgg).forEach(v => {
+      const q     = v.qtd || 1;
+      v.cos_pc    = v.costura / q;
+      v.cor_pc    = v.corte   / q;
+      v.tec_pc    = v.tecido  / q;
+      v.pv_medio  = v.pv_sim;
+      v.lucro_pc  = v.lucro_sim;
+      v.lucro_pct = v.lucro_pct_sim;
+    });
+    return prodAgg;
+  }
+
+  // view === 'tecido': re-agregar prodAgg agrupando por tec
+  const tecAgg = {};
+  Object.values(prodAgg).forEach(v => {
+    const tec = v.tec || 'Outros';
+    if (!tecAgg[tec]) tecAgg[tec] = {
+      qtd:0,costura:0,corte:0,tecido:0,custo:0,
+      venda_sim:0,lucro_sim_total:0,
+      classif:'',tec:tec,usando_sim:false
+    };
+    const t = tecAgg[tec];
+    t.qtd             += v.qtd;
+    t.costura         += v.costura;
+    t.corte           += v.corte;
+    t.tecido          += v.tecido;
+    t.custo           += v.custo;
+    t.venda_sim       += v.venda_sim;
+    t.lucro_sim_total += v.lucro_sim_total;
+    if (v.usando_sim)   t.usando_sim = true;
+  });
+
+  // Derivados finais por tecido
+  Object.values(tecAgg).forEach(v => {
+    const q           = v.qtd || 1;
+    v.custo_pc        = v.custo    / q;
+    v.cos_pc          = v.costura  / q;
+    v.cor_pc          = v.corte    / q;
+    v.tec_pc          = v.tecido   / q;
+    v.pv_sim          = v.venda_sim / q;
+    v.lucro_sim       = v.lucro_sim_total / q;
+    v.lucro_pct_sim   = v.venda_sim > 0 ? v.lucro_sim_total / v.venda_sim * 100 : 0;
+    v.pv_medio        = v.pv_sim;
+    v.lucro_pc        = v.lucro_sim;
+    v.lucro_pct       = v.lucro_pct_sim;
+    // venda e lucro base (sem sim) para compatibilidade
+    v.venda  = v.venda_sim;
+    v.lucro  = v.lucro_sim_total;
+  });
+  return tecAgg;
+}
+
+function _applySimTipo(agg, view) {
+  Object.keys(agg).forEach(cat => {
+    const v  = agg[cat];
+    const q  = v.qtd || 1;
+    v.custo_pc  = v.custo / q;
+    v.cos_pc    = v.costura / q;
+    v.cor_pc    = v.corte   / q;
+    v.tec_pc    = v.tecido  / q;
+    const simPV = mState.pvSim[cat];
+    if (simPV && simPV > 0) {
+      v.pv_sim          = simPV;
+      v.lucro_sim       = lucroFromPV(simPV, v.custo_pc);
+      v.venda_sim       = simPV * q;
+      v.lucro_sim_total = v.lucro_sim * q;
+      v.lucro_pct_sim   = v.lucro_sim / simPV * 100;
       v.usando_sim      = true;
     } else {
       v.pv_sim          = v.venda / q;
@@ -1195,12 +1281,15 @@ function renderMensal() {
   const tbodyHtml = rows.map(([grupo,v])=>{
     const cor  = palette[grupo]||'#888';
     const lPct = v.lucro_pct||0;
-    const lCls = lPct>=60?'at-green':lPct>=40?'at-amber':'at-red';
+    const lNeg = lPct < 0;
+    const lCls = lNeg?'at-red':lPct>=60?'at-green':lPct>=40?'at-amber':'at-red';
     const sim  = v.usando_sim;
     const pvCell = `<span style="${sim?'color:var(--accent);font-weight:600':''}">${fRp(v.pv_medio)}</span>`;
+    const barW  = Math.min(Math.abs(lPct), 100).toFixed(0);
+    const barClr = lNeg?'var(--red)':lPct>=60?'var(--green)':lPct>=40?'var(--amber)':'var(--red)';
     const lucroBar = `<div class="lucro-spark">
-      <div class="ls-bar" style="width:${Math.min(lPct,100).toFixed(0)}px;background:${lPct>=60?'var(--green)':lPct>=40?'var(--amber)':'var(--red)'}"></div>
-      <span class="${lCls} at-badge">${fPct(lPct)}</span>
+      ${lNeg?`<span style="color:var(--red);font-size:11px;font-weight:700;margin-right:2px">▼</span>`:`<div class="ls-bar" style="width:${barW}px;background:${barClr}"></div>`}
+      <span class="${lCls} at-badge">${lNeg?'':''}${fPct(lPct)}</span>
     </div>`;
 
     const groupCell = mState.view!=='produto'
@@ -1216,23 +1305,24 @@ function renderMensal() {
       <td class="num">${fRp(v.tec_pc)}</td>
       <td class="num" style="color:var(--amber);font-weight:500">${fRp(v.custo_pc)}</td>
       <td class="num">${pvCell}</td>
-      <td class="num" style="color:var(--accent)">${fR(v.venda_sim)}</td>
-      <td class="num" style="color:var(--green)">${fRp(v.lucro_pc)}</td>
-      <td class="num" style="color:var(--green)">${fR(v.lucro_sim_total)}</td>
+      <td class="num" style="color:${v.usando_sim?'var(--accent)':'var(--text2)'}">${fR(v.venda_sim)}${v.usando_sim?'<span style="font-size:9px;vertical-align:super;color:var(--accent)">sim</span>':''}</td>
+      <td class="num" style="color:${v.lucro_pc<0?'var(--red)':'var(--green)'};font-weight:${v.lucro_pc<0?'700':'400'}">${v.lucro_pc<0?'▼':''} ${fRp(v.lucro_pc)}</td>
+      <td class="num" style="color:${v.lucro_sim_total<0?'var(--red)':'var(--green)'};font-weight:${v.lucro_sim_total<0?'700':'400'}">${v.lucro_sim_total<0?'▼':''} ${fR(v.lucro_sim_total)}</td>
       <td>${lucroBar}</td>
     </tr>`;
   }).join('');
 
+  const lucTotCls = tLuc<0?'at-red':tVen>0&&tLuc/tVen>=0.6?'at-green':'at-amber';
   const tfootHtml = `<tfoot><tr>
     <td colspan="${mState.view==='produto'?3:1}" style="font-weight:700">TOTAL</td>
     <td class="num">${fN(tQtd)}</td>
     <td class="num"></td><td class="num"></td><td class="num"></td>
-    <td class="num">${fRp(tCus/Math.max(tQtd,1))}</td>
+    <td class="num" style="color:var(--amber);font-weight:600">${fRp(tCus/Math.max(tQtd,1))}</td>
     <td class="num"></td>
-    <td class="num">${fR(tVen)}</td>
-    <td class="num"></td>
-    <td class="num">${fR(tLuc)}</td>
-    <td><span class="at-badge ${tVen>0&&tLuc/tVen>=0.6?'at-green':'at-amber'}">${fPct(tVen>0?tLuc/tVen*100:0)}</span></td>
+    <td class="num" style="font-weight:600">${fR(tVen)}</td>
+    <td class="num" style="color:${tLuc<0?'var(--red)':'var(--green)'};font-weight:600">${tLuc<0?'▼ ':' '}${fRp(tLuc/Math.max(tQtd,1))}</td>
+    <td class="num" style="color:${tLuc<0?'var(--red)':'var(--green)'};font-weight:600">${tLuc<0?'▼ ':''}${fR(tLuc)}</td>
+    <td><span class="at-badge ${lucTotCls}">${fPct(tVen>0?tLuc/tVen*100:0)}</span></td>
   </tr></tfoot>`;
 
   document.getElementById('men-body').innerHTML = `
