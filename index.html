@@ -38,6 +38,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .header-meta { display: flex; gap: 20px; align-items: center; }
 .meta-pill { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 4px 11px; font-size: 12px; color: var(--text2); }
 .meta-pill b { color: var(--text); font-weight: 500; }
+#mes-select option { background: var(--bg2); color: var(--text); }
 
 /* ── KPI STRIP ── */
 .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
@@ -294,9 +295,16 @@ td.center { text-align: center; }
     </div>
   </div>
   <div class="header-meta">
-    <div class="meta-pill">Período: <b>Março 2026</b></div>
-    <div class="meta-pill">Peças: <b id="h-total-pcs">79.386</b></div>
-    <div class="meta-pill">Produtos: <b>43</b></div>
+    <div class="meta-pill" style="padding:0;overflow:hidden">
+      <select id="mes-select" onchange="setMesDash(this.value)" style="background:transparent;border:none;padding:4px 28px 4px 11px;font-family:var(--sans);font-size:12px;color:var(--text);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center">
+        <option value="all">Todos os meses</option>
+        <option value="2026-01">Janeiro 2026</option>
+        <option value="2026-02">Fevereiro 2026</option>
+        <option value="2026-03" selected>Março 2026</option>
+      </select>
+    </div>
+    <div class="meta-pill">Peças: <b id="h-total-pcs">85.462</b></div>
+    <div class="meta-pill">Produtos: <b id="h-total-prods">43</b></div>
   </div>
 </div>
 </div>
@@ -1293,6 +1301,53 @@ function buildMensal() {
   renderMensal();
 }
 
+// ── MÊS DA ABA 1 ──────────────────────────────────────────────────────────
+let mesDash = '2026-03';  // padrão março
+
+function setMesDash(val) {
+  mesDash = val;
+  // Atualizar pill de peças com total do mês selecionado
+  const totais = {
+    'all':     155006,  // jan+fev+mar
+    '2026-01': 28940,
+    '2026-02': 40604,
+    '2026-03': 85462,
+  };
+  const prods = {
+    'all': 43, '2026-01': 43, '2026-02': 43, '2026-03': 43,
+  };
+  const fmt = v => v.toLocaleString('pt-BR').replace(/,/g,'.');
+  document.getElementById('h-total-pcs').textContent = fmt(totais[val] || 85462);
+  document.getElementById('h-total-prods').textContent = prods[val] || 43;
+
+  // Recalcular KPIs e tabela usando dados do mês selecionado da aba mensal
+  updateDashFromMes();
+}
+
+function updateDashFromMes() {
+  // KPIs da aba 1 refletem o mês selecionado usando MENSAL se disponível
+  if (typeof MENSAL === 'undefined') { updateKPIs(); return; }
+  const meses = mesDash === 'all' ? MENSAL.meses : [mesDash];
+  const key = 'por_tipo';
+  let rec=0, cus=0, luc=0, qtd=0;
+  meses.forEach(m => {
+    Object.values(MENSAL[key][m] || {}).forEach(v => {
+      rec += v.venda  || 0;
+      cus += v.custo  || 0;
+      luc += v.lucro  || 0;
+      qtd += v.qtd    || 0;
+    });
+  });
+  const fmtR = v => v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1e3?'R$'+(v/1e3).toFixed(1)+'k':'R$'+v.toFixed(0);
+  const safe = id => { const el=document.getElementById(id); if(el) return el; return {textContent:''}; };
+  safe('kpi-receita').textContent = fmtR(rec);
+  safe('kpi-custo').textContent   = fmtR(cus);
+  safe('kpi-lucro').textContent   = fmtR(luc);
+  safe('kpi-margem').textContent  = rec>0 ? (luc/rec*100).toFixed(1)+'%' : '—';
+  safe('kpi-ticket').textContent  = qtd>0 ? 'R$'+(rec/qtd).toFixed(2) : '—';
+  safe('kpi-custo-pc').textContent= qtd>0 ? 'R$'+(cus/qtd).toFixed(2) : '—';
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────
 function renderAll() {
   renderTable();
@@ -1305,6 +1360,7 @@ buildMargemEditor();
 buildLucroEditor();
 buildPVEditor();
 renderAll();
+setTimeout(updateDashFromMes, 100);
 </script>
 </body>
 </html>
