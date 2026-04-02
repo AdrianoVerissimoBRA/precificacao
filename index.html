@@ -2290,44 +2290,77 @@ function renderSupplyTecido(an, tot, kpisHtml, chartHtml) {
   const tecCor = Object.fromEntries(lista.map(([t],i) => [t, TEC_PAL[i % TEC_PAL.length]]));
 
   // ── Gráfico por tecido ──────────────────────────────────────────────────────
-  const maxProd = Math.max(...lista.map(([,d])=>d.qtd_prod), 1);
-  const tecChartRows = lista.map(([tec, d]) => {
-    const cor = tecCor[tec];
-    const wProd  = (d.qtd_prod  / maxProd * 100).toFixed(1);
-    const wVenda = (d.qtd_venda / maxProd * 100).toFixed(1);
-    const assertiv = d.assertiv_corr;
-    const aClr = assertiv==null?'var(--text3)':assertiv>=80?'var(--green)':assertiv>=55?'var(--amber)':'var(--red)';
-    const n_super = d.n_super || 0;
-    return `<div style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:7px">
-          <div style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0"></div>
-          <span style="font-size:12px;font-weight:600;color:var(--text)">${tec}</span>
-          ${n_super>0?`<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600">↑ ${n_super} alta demanda</span>`:''}
+  // ── Gráfico por tecido — duas linhas Prod/Venda por tecido (mesma escala global)
+  const maxGlobal = Math.max(...lista.map(([,d]) => Math.max(d.qtd_prod, d.qtd_venda)), 1);
+
+  const tecChartRows = lista
+    .filter(([, d]) => d.qtd_prod > 0 || d.qtd_venda > 0)
+    .map(([tec, d]) => {
+      const cor      = tecCor[tec];
+      const assertiv = d.assertiv_corr;
+      const aClr     = assertiv == null
+        ? (d.assertiv_bruta > 100 ? 'var(--accent)' : 'var(--text3)')
+        : assertiv >= 80 ? 'var(--green)' : assertiv >= 55 ? 'var(--amber)' : 'var(--red)';
+      const n_super  = d.n_super || 0;
+      const wProd    = (d.qtd_prod  / maxGlobal * 100).toFixed(2);
+      const wVenda   = (d.qtd_venda / maxGlobal * 100).toFixed(2);
+      const saldoClr = d.saldo > 0 ? 'var(--amber)' : d.saldo < 0 ? 'var(--accent)' : 'var(--text3)';
+      const saldoTxt = (d.saldo > 0 ? '+' : '') + fN(d.saldo);
+      const pctDisp  = assertiv != null ? assertiv + '%' : (d.assertiv_bruta != null ? d.assertiv_bruta + '%' : '—');
+
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="width:130px;flex-shrink:0;padding-top:4px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:9px;height:9px;border-radius:50%;background:${cor};flex-shrink:0"></div>
+            <span style="font-size:12px;font-weight:700;color:var(--text)">${tec}</span>
+          </div>
+          ${n_super > 0
+            ? `<div style="font-size:10px;color:#1d4ed8;margin-left:15px;margin-top:2px">↑ ${n_super} alta dem.</div>`
+            : d.gap_pcs > 0
+            ? `<div style="font-size:10px;color:var(--red);margin-left:15px;margin-top:2px">▼ gap ${fN(d.gap_pcs)}</div>`
+            : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:12px;font-size:11px">
-          <span style="color:var(--text3)">${fN(d.qtd_prod)} prod · ${fN(d.qtd_venda)} venda</span>
-          ${assertiv!=null?`<span style="color:${aClr};font-weight:700;font-family:var(--mono)">${assertiv}%</span>`:'<span style="color:var(--text3)">estoque</span>'}
-          ${d.gap_pcs>0?`<span style="color:var(--red);font-size:10px">▼ ${fN(d.gap_pcs)} gap</span>`:''}
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:8px;height:18px">
+            <span style="font-size:10px;color:var(--text3);width:32px;flex-shrink:0;text-align:right">Prod</span>
+            <div style="flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${wProd}%;background:${cor};opacity:.28;border-radius:4px"></div>
+            </div>
+            <span style="font-size:11px;font-family:var(--mono);color:var(--text2);width:52px;text-align:right;flex-shrink:0">${fN(d.qtd_prod)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;height:18px">
+            <span style="font-size:10px;color:var(--text3);width:32px;flex-shrink:0;text-align:right">Venda</span>
+            <div style="flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${wVenda}%;background:${cor};border-radius:4px"></div>
+            </div>
+            <span style="font-size:11px;font-family:var(--mono);color:var(--text2);width:52px;text-align:right;flex-shrink:0">${fN(d.qtd_venda)}</span>
+          </div>
         </div>
-      </div>
-      <div style="position:relative;height:10px;background:var(--bg4);border-radius:5px;overflow:hidden">
-        <div style="position:absolute;left:0;top:0;height:100%;width:${wProd}%;background:${cor};opacity:.25;border-radius:5px"></div>
-        <div style="position:absolute;left:0;top:0;height:100%;width:${wVenda}%;background:${cor};border-radius:5px"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px">
-        <span>⬜ produção &nbsp; ■ vendas</span>
-        <span style="color:${d.saldo>0?'var(--amber)':d.saldo<0?'var(--accent)':'var(--text3)'}">${d.saldo>0?'+':''}${fN(d.saldo)} saldo</span>
-      </div>
-    </div>`;
-  }).join('');
+        <div style="width:60px;flex-shrink:0;text-align:right;padding-top:6px">
+          <div style="font-size:15px;font-weight:800;font-family:var(--mono);color:${aClr}">${pctDisp}</div>
+          <div style="font-size:9px;color:${saldoClr};margin-top:1px">${saldoTxt}</div>
+        </div>
+        <div style="width:8px;flex-shrink:0;padding-top:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${aClr}"></div>
+        </div>
+      </div>`;
+    }).join('');
 
   const tecChartHtml = `<div class="sc-tipo-chart" style="margin-bottom:16px">
-    <div class="trend-head">
+    <div class="trend-head" style="margin-bottom:14px">
       <h4>Produção vs Venda por Tecido — Março 2026</h4>
-      <div style="font-size:10px;color:var(--text3)">Assertividade = produtos normais excl. alta demanda</div>
+      <div style="display:flex;gap:16px;font-size:10px;color:var(--text3)">
+        <span>Assertividade de planejamento (excl. alta demanda)</span>
+        <span style="color:var(--green)">● ≥80%</span>
+        <span style="color:var(--amber)">● ≥55%</span>
+        <span style="color:var(--red)">● &lt;55%</span>
+        <span style="color:var(--accent)">● Alta demanda</span>
+      </div>
     </div>
     ${tecChartRows}
+    <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;color:var(--text3)">
+      <span>⬜ Produção (clara) &nbsp;■ Vendas (sólida) &nbsp;· Escala: máximo global entre todos os tecidos</span>
+    </div>
   </div>`;
 
   // ── Tabela por tecido ────────────────────────────────────────────────────────
