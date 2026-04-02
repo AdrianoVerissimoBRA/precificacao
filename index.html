@@ -1894,8 +1894,11 @@ function buildSupply() {
 // ══════════════════════════════════════════════════════════════════════════════
 let precState = {
   filtTipo: 'all',
+  busca: '',
   params: { margem:50, icms:12, desp:5, frete:4 },
-  pvOverride: {},   // { prod: pvCustom }
+  pvOverride: {},      // { prod: pvCustom }
+  pvPorTipo: {},       // { tipo: pvGlobal }
+  sortCol: 'prod', sortDir: 1,
 };
 
 const TIPO_COLORS_P = {Top:'#d97706',Vestido:'#059669',Body:'#e5475c',Calça:'#4f72e3',
@@ -1913,12 +1916,25 @@ function calcPrecificacao(custo_pc, pv_custom) {
   return { pv_base, pv, lucro, marg_real, icms_val, desp_val };
 }
 
+function getPVProd(r) {
+  // Prioridade: override individual > override por tipo > calculado
+  if (precState.pvOverride[r.prod] > 0) return precState.pvOverride[r.prod];
+  if (precState.pvPorTipo[r.classif] > 0) return precState.pvPorTipo[r.classif];
+  return 0;
+}
+
 function buildPrecSide() {
   const prods = VENDAS.resumo.filter(r => r.classif !== 'S/R' && r.custo_pc != null);
   const tipos = [...new Set(prods.map(r=>r.classif))].sort();
   const contTipo = Object.fromEntries(tipos.map(t=>[t, prods.filter(r=>r.classif===t).length]));
 
   document.getElementById('prec-side').innerHTML = `
+    <h4>Filtrar</h4>
+    <input id="prec-busca" class="search-input" placeholder="Buscar produto..."
+      value="${precState.busca}"
+      oninput="precState.busca=this.value;renderPrec()"
+      style="margin-bottom:8px">
+
     <h4>Tipo de Produto</h4>
     <button class="prec-tipo-btn ${precState.filtTipo==='all'?'active':''}" onclick="precSetTipo('all')">
       <span>Todos</span><span class="prec-tipo-cnt">${prods.length}</span>
@@ -1933,6 +1949,26 @@ function buildPrecSide() {
     </button>`).join('')}
 
     <div class="side-sep"></div>
+    <h4>PV Global por Tipo</h4>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.4">
+      Define o PV para todos os produtos do tipo. Override individual tem prioridade.
+    </div>
+    ${tipos.map(t => {
+      const cor = TIPO_COLORS_P[t]||'#888';
+      const cv  = precState.pvPorTipo[t] || '';
+      return `<div class="pv-sim-row">
+        <span class="pv-sim-lbl" style="display:flex;align-items:center;gap:5px">
+          <span style="width:7px;height:7px;border-radius:50%;background:${cor};flex-shrink:0;display:inline-block"></span>
+          ${t}
+        </span>
+        <input class="pv-sim-inp" id="pvt-${encodeURIComponent(t)}" type="number" min="0" step="0.5"
+          value="${cv}" placeholder="—"
+          oninput="precTipoChange('${t}',this.value)">
+      </div>`;
+    }).join('')}
+    <button class="sim-reset-btn" style="margin-top:6px" onclick="precResetTodos()">Limpar PVs por tipo</button>
+
+    <div class="side-sep"></div>
     <h4>Parâmetros Globais</h4>
     <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
       ${[
@@ -1945,13 +1981,13 @@ function buildPrecSide() {
           <span style="color:var(--text2)">${p.l}</span>
           <div style="display:flex;align-items:center;gap:3px">
             <span style="font-size:10px;color:var(--text3)">${p.s}</span>
-            <input id="pp-${p.k}" type="number" value="${p.v}" min="0" max="100" step="${p.k==='frete'?'0.5':'0.5'}"
+            <input id="pp-${p.k}" type="number" value="${p.v}" min="0" max="100" step="0.5"
               style="width:52px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:500;padding:3px 5px;text-align:right;outline:none;"
               oninput="precParamChange('${p.k}',this.value)">
           </div>
         </div>`).join('')}
       <div style="font-size:10px;color:var(--text3);line-height:1.4;margin-top:4px;padding:6px 8px;background:var(--bg3);border-radius:6px">
-        Fórmula: PV = (Custo + Frete) ÷ (1 − Margem − ICMS − Despesa)
+        PV = (Custo + Frete) ÷ (1 − Margem − ICMS − Despesa)
       </div>
     </div>`;
 }
@@ -1964,65 +2000,126 @@ function precSetTipo(t) { precState.filtTipo=t; buildPrecSide(); renderPrec(); }
 
 function renderPrec() {
   const p = precState.params;
-  const todos = VENDAS.resumo.filter(r => r.classif!=='S/R' && r.custo_pc!=null);
-  const prods = precState.filtTipo==='all' ? todos : todos.filter(r=>r.classif===precState.filtTipo);
   const fRp = v => 'R$'+(+v).toFixed(2);
-  const fR  = v => v>=1e3?'R$'+(v/1e3).toFixed(1)+'k':'R$'+v.toFixed(0);
+  const q   = precState.busca.toLowerCase().trim();
+  const todos = VENDAS.resumo.filter(r => r.classif!=='S/R' && r.custo_pc!=null);
+  const prods = todos
+    .filter(r => precState.filtTipo==='all' || r.classif===precState.filtTipo)
+    .filter(r => !q || r.prod.toLowerCase().includes(q) || (r.classif||'').toLowerCase().includes(q))
+    .sort((a,b) => {
+      const k = precState.sortCol;
+      const getV = r => {
+        if (k==='prod') return r.prod;
+        if (k==='classif') return r.classif;
+        const pv = getPVProd(r); const c = calcPrecificacao(r.custo_pc, pv);
+        if (k==='pv')    return c.pv;
+        if (k==='custo') return r.custo_pc;
+        if (k==='frete') return p.frete;
+        if (k==='icms')  return c.icms_val;
+        if (k==='desp')  return c.desp_val;
+        if (k==='lucro') return c.lucro;
+        if (k==='marg')  return c.marg_real;
+        return 0;
+      };
+      const av=getV(a), bv=getV(b);
+      return typeof av==='string' ? av.localeCompare(bv)*precState.sortDir : (av-bv)*precState.sortDir;
+    });
 
+  const simAtivo = Object.keys(precState.pvOverride).length>0 || Object.keys(precState.pvPorTipo).length>0;
+
+  // ── TABELA ──────────────────────────────────────────────────────────────────
+  const th = (col, lbl) => {
+    const s = precState.sortCol===col;
+    const c = s?(precState.sortDir>0?'sort-asc':'sort-desc'):'';
+    return `<th class="${c}" onclick="precSort('${col}')" style="cursor:pointer;user-select:none">${lbl}</th>`;
+  };
+  const thHtml = [
+    th('prod','Produto'), th('classif','Tipo'),
+    th('custo','Custo/pç'), th('costura','Costura/pç'), th('corte','Corte/pç'), th('tecido','Tecido/pç'),
+    th('frete','Frete'), th('icms','ICMS'), th('desp','Desp.'),
+    th('pv','PV'), th('lucro','Lucro/pç'), th('marg','Margem')
+  ].join('');
+
+  const tbHtml = prods.map(r => {
+    const pvCust = getPVProd(r);
+    const calc   = calcPrecificacao(r.custo_pc, pvCust);
+    const mClr   = calc.marg_real>=55?'var(--green)':calc.marg_real>=35?'var(--amber)':'var(--red)';
+    const pvSrc  = precState.pvOverride[r.prod]>0 ? '●' : precState.pvPorTipo[r.classif]>0 ? '◆' : '';
+    const cor    = TIPO_COLORS_P[r.classif]||'#888';
+    return `<tr>
+      <td style="font-weight:600">${r.prod}</td>
+      <td><span class="badge badge-${(r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'')}">${r.classif}</span></td>
+      <td class="num" style="color:var(--amber);font-weight:500">${fRp(r.custo_pc)}</td>
+      <td class="num" style="color:var(--amber)">${fRp(r.costura_pc||0)}</td>
+      <td class="num" style="color:var(--amber)">${(r.corte_pc||0).toFixed(3)}</td>
+      <td class="num" style="color:var(--amber)">${fRp(r.tecido_pc||0)}</td>
+      <td class="num">${fRp(p.frete)}</td>
+      <td class="num">${fRp(calc.icms_val)}</td>
+      <td class="num">${fRp(calc.desp_val)}</td>
+      <td class="num">
+        <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+          ${pvSrc?`<span style="font-size:9px;color:var(--accent)" title="${pvSrc==='●'?'Override individual':'PV por tipo'}">${pvSrc}</span>`:''}
+          <input type="number" min="0" step="0.5" value="${calc.pv.toFixed(2)}"
+            style="width:64px;background:${pvCust>0?'var(--bg3)':'transparent'};border:${pvCust>0?'1.5px solid var(--accent)':'1px solid var(--border2)'};border-radius:5px;color:${pvCust>0?'var(--accent)':'var(--text)'};font-family:var(--mono);font-size:11px;font-weight:${pvCust>0?'700':'400'};padding:2px 5px;text-align:right;outline:none;"
+            oninput="precPVChange('${r.prod}',this.value)"
+            title="PV base calculado: ${fRp(calc.pv_base)}">
+        </div>
+      </td>
+      <td class="num" style="color:${mClr};font-weight:500">${fRp(calc.lucro)}</td>
+      <td>
+        <div class="lucro-spark">
+          <div class="lucro-bar-bg"><div class="lucro-bar-fill" style="width:${Math.min(Math.abs(calc.marg_real),100).toFixed(0)}%;background:${mClr}"></div></div>
+          <span style="color:${mClr};font-size:11px;font-family:var(--mono);font-weight:600;width:44px;text-align:right">${calc.marg_real.toFixed(1)}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // ── CARDS ────────────────────────────────────────────────────────────────────
   const cards = prods.map(r => {
-    const pvCust  = precState.pvOverride[r.prod] || 0;
-    const calc    = calcPrecificacao(r.custo_pc, pvCust);
-    const cor     = TIPO_COLORS_P[r.classif] || '#888';
-    const mClr    = calc.marg_real>=55?'var(--green)':calc.marg_real>=35?'var(--amber)':'var(--red)';
-    const pvDisp  = pvCust > 0 ? pvCust : calc.pv_base;
-
-    // Proporções para barra empilhada (base = pv_base)
+    const pvCust = getPVProd(r);
+    const calc   = calcPrecificacao(r.custo_pc, pvCust);
+    const mClr   = calc.marg_real>=55?'var(--green)':calc.marg_real>=35?'var(--amber)':'var(--red)';
+    const pvDisp = pvCust > 0 ? pvCust : calc.pv_base;
     const base   = calc.pv > 0 ? calc.pv : 1;
-    const pCusto = r.custo_pc / base * 100;
-    const pFrete = p.frete    / base * 100;
+    const pCusto = r.custo_pc  / base * 100;
+    const pFrete = p.frete     / base * 100;
     const pIcms  = calc.icms_val / base * 100;
     const pDesp  = calc.desp_val / base * 100;
     const pLucro = Math.max(0, calc.lucro / base * 100);
+    const srcLabel = precState.pvOverride[r.prod]>0 ? 'Override individual' : precState.pvPorTipo[r.classif]>0 ? 'PV por tipo' : `PV calculado (margem ${p.margem}%)`;
 
     return `<div class="prec-card">
       <div class="prec-card-header">
         <span class="prec-card-name">${r.prod}</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="prec-card-tipo badge badge-${(r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'')}">${r.classif}</span>
-        </div>
+        <span class="badge badge-${(r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'')}">${r.classif}</span>
       </div>
       <div class="prec-card-body">
-        <!-- Custos de produção -->
-        <div class="prec-row"><span class="prec-row-lbl">Costura/pç</span><span class="prec-row-val amber">R$${(r.costura_pc||0).toFixed(2)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">Corte/pç</span><span class="prec-row-val amber">R$${(r.corte_pc||0).toFixed(3)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">Tecido/pç</span><span class="prec-row-val amber">R$${(r.tecido_pc||0).toFixed(2)}</span></div>
-        <div class="prec-row" style="font-weight:600"><span class="prec-row-lbl" style="font-weight:700">Custo produção</span><span class="prec-row-val amber" style="font-size:13px">R$${r.custo_pc.toFixed(2)}</span></div>
+        <div class="prec-row"><span class="prec-row-lbl">Costura/pç</span><span class="prec-row-val amber">${fRp(r.costura_pc||0)}</span></div>
+        <div class="prec-row"><span class="prec-row-lbl">Corte/pç</span><span class="prec-row-val amber">${(r.corte_pc||0).toFixed(3)}</span></div>
+        <div class="prec-row"><span class="prec-row-lbl">Tecido/pç</span><span class="prec-row-val amber">${fRp(r.tecido_pc||0)}</span></div>
+        <div class="prec-row" style="font-weight:600"><span class="prec-row-lbl" style="font-weight:700">Custo produção</span><span class="prec-row-val amber" style="font-size:13px">${fRp(r.custo_pc)}</span></div>
         <div class="prec-divider"></div>
-        <!-- Impostos e taxas (calculados sobre o PV) -->
-        <div class="prec-row"><span class="prec-row-lbl">Frete fixo</span><span class="prec-row-val">R$${p.frete.toFixed(2)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">ICMS (${p.icms}%)</span><span class="prec-row-val">R$${calc.icms_val.toFixed(2)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">Despesa (${p.desp}%)</span><span class="prec-row-val">R$${calc.desp_val.toFixed(2)}</span></div>
+        <div class="prec-row"><span class="prec-row-lbl">Frete fixo</span><span class="prec-row-val">${fRp(p.frete)}</span></div>
+        <div class="prec-row"><span class="prec-row-lbl">ICMS (${p.icms}%)</span><span class="prec-row-val">${fRp(calc.icms_val)}</span></div>
+        <div class="prec-row"><span class="prec-row-lbl">Despesa (${p.desp}%)</span><span class="prec-row-val">${fRp(calc.desp_val)}</span></div>
         <div class="prec-divider"></div>
-        <!-- Barra de composição do PV -->
-        <div class="prec-stack" title="Composição do preço de venda">
-          <div class="prec-stack-seg" style="flex:${pCusto};background:#f59e0b" title="Custo R$${r.custo_pc.toFixed(2)}"></div>
-          <div class="prec-stack-seg" style="flex:${pFrete};background:#94a3b8" title="Frete R$${p.frete}"></div>
-          <div class="prec-stack-seg" style="flex:${pIcms};background:#f87171" title="ICMS R$${calc.icms_val.toFixed(2)}"></div>
-          <div class="prec-stack-seg" style="flex:${pDesp};background:#c084fc" title="Desp R$${calc.desp_val.toFixed(2)}"></div>
-          <div class="prec-stack-seg" style="flex:${pLucro};background:${mClr}" title="Lucro R$${calc.lucro.toFixed(2)}"></div>
+        <div class="prec-stack">
+          <div class="prec-stack-seg" style="flex:${pCusto};background:#f59e0b"></div>
+          <div class="prec-stack-seg" style="flex:${pFrete};background:#94a3b8"></div>
+          <div class="prec-stack-seg" style="flex:${pIcms};background:#f87171"></div>
+          <div class="prec-stack-seg" style="flex:${pDesp};background:#c084fc"></div>
+          <div class="prec-stack-seg" style="flex:${pLucro};background:${mClr}"></div>
         </div>
         <div style="display:flex;gap:4px;font-size:9px;color:var(--text3);flex-wrap:wrap;margin-bottom:2px">
           <span>🟡Custo</span><span>⬜Frete</span><span>🔴ICMS</span><span>🟣Desp</span><span style="color:${mClr}">●Lucro</span>
         </div>
-        <!-- PV editável -->
         <div class="prec-pv-row">
           <span class="prec-pv-lbl">Preço de Venda R$</span>
-          <input class="prec-pv-inp" id="pv-${encodeURIComponent(r.prod)}" type="number" min="0" step="0.5"
+          <input class="prec-pv-inp" type="number" min="0" step="0.5"
             value="${pvDisp.toFixed(2)}"
-            placeholder="${calc.pv_base.toFixed(2)}"
-            oninput="precPVChange('${r.prod}', this.value)">
+            oninput="precPVChange('${r.prod}',this.value)">
         </div>
-        <!-- Resultado -->
         <div class="prec-result">
           <div class="prec-result-box" style="border-color:${mClr}20;background:${mClr}08">
             <div class="prec-result-val" style="color:${mClr}">${fRp(calc.lucro)}</div>
@@ -2033,7 +2130,10 @@ function renderPrec() {
             <div class="prec-result-lbl">Margem</div>
           </div>
         </div>
-        ${pvCust>0 ? `<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:2px">PV base: ${fRp(calc.pv_base)} · <a href="#" onclick="precResetPV('${r.prod}');return false" style="color:var(--accent)">restaurar</a></div>` : `<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:2px">PV calculado com margem ${p.margem}%</div>`}
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:3px">
+          ${srcLabel}
+          ${pvCust>0?` · <a href="#" onclick="precResetPV('${r.prod}');return false" style="color:var(--accent)">restaurar</a>`:''}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -2041,21 +2141,59 @@ function renderPrec() {
   document.getElementById('prec-body').innerHTML = `
     <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">Precificação por Produto</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      Altere os parâmetros globais (sidebar) ou o PV individual em cada card. A barra mostra a composição do preço de venda.
+      ${simAtivo?'<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;margin-right:6px">● PV CUSTOMIZADO ATIVO</span>':''}
+      Parâmetros: Margem ${p.margem}% · ICMS ${p.icms}% · Frete R$${p.frete} · Despesa ${p.desp}%
+      · <span style="color:var(--text3);font-size:10px">● individual &nbsp;◆ por tipo</span>
+    </div>
+
+    <!-- TABELA COMPLETA -->
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <span style="display:block;width:3px;height:14px;background:var(--accent);border-radius:2px"></span>
+      Planilha completa (${prods.length} produtos)
+    </div>
+    <div class="anal-table-wrap" style="margin-bottom:24px">
+      <table class="anal-table">
+        <thead><tr>${thHtml}</tr></thead>
+        <tbody>${tbHtml}</tbody>
+      </table>
+    </div>
+
+    <!-- CARDS DETALHADOS -->
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px">
+      <span style="display:block;width:3px;height:14px;background:var(--accent);border-radius:2px"></span>
+      Cards de detalhe
     </div>
     <div class="prec-grid">${cards}</div>`;
+}
+
+function precSort(col) {
+  if (precState.sortCol===col) precState.sortDir*=-1;
+  else { precState.sortCol=col; precState.sortDir=1; }
+  renderPrec();
 }
 
 function precPVChange(prod, val) {
   const v = parseFloat(val);
   if (v > 0) precState.pvOverride[prod] = v;
   else delete precState.pvOverride[prod];
-  // Atualizar só o card do produto sem re-render completo
+  renderPrec();
+}
+
+function precTipoChange(tipo, val) {
+  const v = parseFloat(val);
+  if (v > 0) precState.pvPorTipo[tipo] = v;
+  else delete precState.pvPorTipo[tipo];
   renderPrec();
 }
 
 function precResetPV(prod) {
   delete precState.pvOverride[prod];
+  renderPrec();
+}
+
+function precResetTodos() {
+  precState.pvPorTipo = {};
+  document.querySelectorAll('[id^="pvt-"]').forEach(i=>i.value='');
   renderPrec();
 }
 
