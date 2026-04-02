@@ -2337,11 +2337,15 @@ function renderPrec() {
     .sort((a,b) => {
       const k = precState.sortCol;
       const getV = r => {
-        if (k==='prod') return r.prod;
+        if (k==='prod')    return r.prod;
         if (k==='classif') return r.classif;
+        if (k==='tec')     return r.tec || '';
+        if (k==='costura') return r.costura_pc || 0;
+        if (k==='corte')   return r.corte_pc   || 0;
+        if (k==='tecido')  return r.tecido_pc  || 0;
+        if (k==='custo')   return r.custo_pc   || 0;
         const pv = getPVProd(r); const c = calcPrecificacao(r.custo_pc, pv);
         if (k==='pv')    return c.pv;
-        if (k==='custo') return r.custo_pc;
         if (k==='frete') return p.frete;
         if (k==='icms')  return c.icms_val;
         if (k==='desp')  return c.desp_val;
