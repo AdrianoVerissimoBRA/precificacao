@@ -413,6 +413,33 @@ td.center { text-align: center; }
 </div>
 
 <div id="page-dashboard">
+<!-- PARÂMETROS DE CÁLCULO -->
+<div id="dash-params-bar" style="display:flex;align-items:center;gap:12px;padding:8px 20px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap">
+  <span style="color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Parâmetros de custo</span>
+  <div style="width:1px;height:16px;background:var(--border)"></div>
+  <label style="display:flex;align-items:center;gap:5px;color:var(--text2)">
+    <span>ICMS</span>
+    <input id="dp-icms" type="number" min="0" max="50" step="0.5" value="12"
+      style="width:46px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 5px;text-align:right;outline:none"
+      oninput="dashParamChange('icms',this.value)">
+    <span style="color:var(--text3)">%</span>
+  </label>
+  <label style="display:flex;align-items:center;gap:5px;color:var(--text2)">
+    <span>Despesa</span>
+    <input id="dp-desp" type="number" min="0" max="50" step="0.5" value="5"
+      style="width:46px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 5px;text-align:right;outline:none"
+      oninput="dashParamChange('desp',this.value)">
+    <span style="color:var(--text3)">%</span>
+  </label>
+  <label style="display:flex;align-items:center;gap:5px;color:var(--text2)">
+    <span>Frete</span>
+    <input id="dp-frete" type="number" min="0" max="50" step="0.5" value="4"
+      style="width:46px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 5px;text-align:right;outline:none"
+      oninput="dashParamChange('frete',this.value)">
+    <span style="color:var(--text3)">R$</span>
+  </label>
+  <span style="color:var(--text3);font-size:10px">Lucro = PV − Custo − Frete − ICMS − Despesa · Altere para recalcular em tempo real</span>
+</div>
 <!-- KPI STRIP -->
 <div class="kpi-strip">
   <div class="kpi">
@@ -428,7 +455,7 @@ td.center { text-align: center; }
   <div class="kpi">
     <div class="kpi-label">Lucro Real</div>
     <div class="kpi-value green" id="kpi-lucro">—</div>
-    <div class="kpi-sub">receita − custo − frete</div>
+    <div class="kpi-sub">receita − custo − frete − ICMS − desp.</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Margem Real</div>
@@ -851,6 +878,36 @@ function toggleCol(btn) {
 // inlineMargemChange removida — aba 1 usa vendas reais
 
 // ── FILTER DATA ────────────────────────────────────────────────────────────
+// Parâmetros ajustáveis do dashboard de vendas
+const dashParams = {
+  icms: VENDAS.totais.params ? VENDAS.totais.params.icms  : 12,
+  desp: VENDAS.totais.params ? VENDAS.totais.params.desp  : 5,
+  frete: VENDAS.totais.params ? VENDAS.totais.params.frete : 4,
+};
+
+function dashParamChange(key, val) {
+  const v = parseFloat(val);
+  if (isNaN(v) || v < 0) return;
+  dashParams[key] = v;
+  // Recalcular lucro_t e marg para cada produto com novos parâmetros
+  VENDAS.resumo.forEach(r => {
+    if (r.custo_pc == null) return;
+    const pv    = r.pv_medio || 0;
+    const icms  = pv * dashParams.icms  / 100;
+    const desp  = pv * dashParams.desp  / 100;
+    const lucro = pv - r.custo_pc - dashParams.frete - icms - desp;
+    r.icms_pc  = parseFloat(icms.toFixed(2));
+    r.desp_pc  = parseFloat(desp.toFixed(2));
+    r.lucro_pc = parseFloat(lucro.toFixed(2));
+    r.lucro_t  = parseFloat((lucro * r.qtd).toFixed(2));
+    r.marg     = pv > 0 ? parseFloat((lucro / pv * 100).toFixed(2)) : null;
+  });
+  renderTable();
+  updateKPIs();
+  updateCharts();
+  try { buildTipoResumo(); } catch(e){}
+}
+
 function filteredData() {
   // Usar dados de vendas reais (VENDAS.resumo) + filtros ativos
   const q = (document.getElementById('prod-search')?.value || '').toLowerCase();
@@ -985,6 +1042,8 @@ const COLS = [
   { key:'costura_pc',label:'Costura/pç',       grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
   { key:'corte_pc',  label:'Corte/pç',         grp:'custos', fmt:v=>v!=null&&v>0?`R$${Number(v).toFixed(2)}`:'—' },
   { key:'tecido_pc', label:'Tecido/pç',        grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
+  { key:'icms_pc',   label:'ICMS/pç',          grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
+  { key:'desp_pc',   label:'Despesa/pç',       grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
   // RESULTADO
   { key:'lucro_pc',  label:'Lucro/pç',         grp:'preco',  fmt:v=>{
       if(v==null) return '—';
@@ -1038,7 +1097,7 @@ function renderTable() {
       ${vcols.map(c => {
         const v    = d[c.key];
         const cell = c.fmt ? c.fmt(v,d) : (v!=null?v:'—');
-        const al   = ['qtd','receita','pv_real','custo_pc','custo_lote','costura_pc','corte_pc','tecido_pc','lucro_pc','lucro_t'].includes(c.key) ? ' right' : '';
+        const al   = ['qtd','receita','pv_real','custo_pc','custo_lote','costura_pc','corte_pc','tecido_pc','icms_pc','desp_pc','lucro_pc','lucro_t'].includes(c.key) ? ' right' : '';
         return `<td class="${al}">${cell}</td>`;
       }).join('')}
     </tr>`).join('');
