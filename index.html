@@ -1574,8 +1574,9 @@ const TIPO_PAL_SC = {Top:'#d97706',Vestido:'#059669',Body:'#e5475c',Calça:'#4f7
 let scState = {
   filtTipo: 'all',
   filtClass: 'all',
-  sortCol: 'assertiv', sortDir: -1,
-  view: 'produto',   // 'produto' | 'tecido'
+  sortCol:    'assertiv', sortDir:    -1,   // sort view produto
+  sortTecCol: 'qtd_prod', sortTecDir: -1,   // sort view tecido
+  view: 'produto',
 };
 
 // ── Classificar linha ─────────────────────────────────────────────────────────
@@ -1663,6 +1664,43 @@ function buildSupplySide() {
     </button>
 
     <div class="side-sep"></div>
+    ${scState.view === 'produto' ? `
+    <h4>Ordenar produtos por</h4>
+    ${[
+      {k:'qtd_prod',  l:'Qtd produzida'},
+      {k:'qtd_venda', l:'Qtd vendida'},
+      {k:'assertiv',  l:'Assertividade'},
+      {k:'gap_pcs',   l:'Gap (alta dem.)'},
+      {k:'saldo',     l:'Saldo estoque'},
+      {k:'receita',   l:'Receita'},
+      {k:'marg',      l:'Margem %'},
+    ].map(s => {
+      const active = scState.sortCol === s.k;
+      const dir    = active ? (scState.sortDir > 0 ? ' ↑' : ' ↓') : '';
+      const cls    = 'side-btn' + (active ? ' active' : '');
+      return '<button class="' + cls + '" onclick="scSetSort(\'' + s.k + '\')">'
+           + '<span>' + s.l + dir + '</span></button>';
+    }).join('')}
+    ` : `
+    <h4>Ordenar tecidos por</h4>
+    ${[
+      {k:'qtd_prod',     l:'Qtd produzida'},
+      {k:'qtd_venda',    l:'Qtd vendida'},
+      {k:'assertiv_corr',l:'Assertividade'},
+      {k:'gap_pcs',      l:'Gap (alta dem.)'},
+      {k:'saldo',        l:'Saldo'},
+      {k:'receita',      l:'Receita'},
+      {k:'n_super',      l:'Qtd alta dem.'},
+    ].map(s => {
+      const active = scState.sortTecCol === s.k;
+      const dir    = active ? (scState.sortTecDir > 0 ? ' ↑' : ' ↓') : '';
+      const cls    = 'side-btn' + (active ? ' active' : '');
+      return '<button class="' + cls + '" onclick="scSetSortTec(\'' + s.k + '\')">'
+           + '<span>' + s.l + dir + '</span></button>';
+    }).join('')}
+    `}
+
+    <div class="side-sep"></div>
     <h4>Alertas</h4>
     <div style="display:flex;flex-direction:column;gap:6px;font-size:11px">
       <div style="background:var(--bg3);border-radius:8px;padding:8px 10px;border-left:3px solid var(--amber)">
@@ -1678,10 +1716,18 @@ function buildSupplySide() {
     </div>`;
 }
 
-function scSetTipo(t)  { scState.filtTipo=t;  buildSupplySide(); renderSupply(); }
-function scSetClass(c) { scState.filtClass=c; buildSupplySide(); renderSupply(); }
-function scSort(col)   { if(scState.sortCol===col)scState.sortDir*=-1; else{scState.sortCol=col;scState.sortDir=-1;} renderSupply(); }
-function scSetView(v)  { scState.view=v; buildSupplySide(); renderSupply(); }
+function scSetTipo(t)   { scState.filtTipo=t;  buildSupplySide(); renderSupply(); }
+function scSetClass(c)  { scState.filtClass=c; buildSupplySide(); renderSupply(); }
+function scSort(col)    { if(scState.sortCol===col)scState.sortDir*=-1; else{scState.sortCol=col;scState.sortDir=-1;} renderSupply(); }
+function scSetView(v)   { scState.view=v; buildSupplySide(); renderSupply(); }
+function scSetSort(col) {
+  if(scState.sortCol===col) scState.sortDir*=-1; else{scState.sortCol=col;scState.sortDir=-1;}
+  buildSupplySide(); renderSupply();
+}
+function scSetSortTec(col) {
+  if(scState.sortTecCol===col) scState.sortTecDir*=-1; else{scState.sortTecCol=col;scState.sortTecDir=-1;}
+  buildSupplySide(); renderSupply();
+}
 
 // ── Render principal ──────────────────────────────────────────────────────────
 function renderSupply() {
@@ -1787,10 +1833,23 @@ function renderSupply() {
 
   // ── Gráfico assertividade por tipo ───────────────────────────────────────
   const byTipo = an.by_tipo;
-  const maxProd = Math.max(...Object.values(byTipo).map(v=>v.prod), 1);
+  const maxProd = Math.max(...Object.values(byTipo).map(v=>Math.max(v.prod,v.venda)), 1);
+
+  // Sort do gráfico segue a ordenação da tabela (sortCol mapeado para by_tipo)
+  const tipoSortMap = {
+    qtd_prod:'prod', qtd_venda:'venda', assertiv:'assertiv',
+    saldo:'saldo', receita:'receita', marg:'receita', gap_pcs:'gap_pcs',
+  };
+  const tipoSortKey = tipoSortMap[scState.sortCol] || 'prod';
+  const tipoSortDir = scState.sortDir || -1;
+
   const tipoHtml = Object.entries(byTipo)
     .filter(([t])=>t!=='?')
-    .sort((a,b)=>b[1].prod-a[1].prod)
+    .sort((a,b) => {
+      const av = a[1][tipoSortKey] ?? (tipoSortDir>0?Infinity:-Infinity);
+      const bv = b[1][tipoSortKey] ?? (tipoSortDir>0?Infinity:-Infinity);
+      return (av-bv) * tipoSortDir;
+    })
     .map(([t,v]) => {
       const cor = TIPO_PAL_SC[t]||'#888';
       const aw  = v.prod>0 ? Math.min(v.venda/v.prod*100, 150) : 0;
@@ -1823,7 +1882,23 @@ function renderSupply() {
 
   const chartHtml = `
     <div class="sc-tipo-chart">
-      <h4>Assertividade por tipo de produto — Março 2026</h4>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+        <h4 style="margin:0">Assertividade por tipo de produto — Março 2026</h4>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${[
+            {k:'qtd_prod','l':'Prod ↓'},
+            {k:'qtd_venda','l':'Venda'},
+            {k:'assertiv','l':'Assertiv.'},
+            {k:'gap_pcs','l':'Gap'},
+            {k:'receita','l':'Receita'},
+          ].map(s => {
+            const tipoK = {qtd_prod:'prod',qtd_venda:'venda',assertiv:'assertiv',gap_pcs:'gap_pcs',receita:'receita'}[s.k]||s.k;
+            const active = (tipoSortMap[scState.sortCol]||'prod') === tipoK;
+            const arrow  = active ? (scState.sortDir>0?' ↑':' ↓') : '';
+            return `<button onclick="scSetSort('${s.k}')" style="padding:3px 9px;border-radius:20px;border:1px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent)':'transparent'};color:${active?'#fff':'var(--text3)'};font-size:10px;font-weight:${active?600:400};cursor:pointer;font-family:var(--sans)">${s.l}${arrow}</button>`;
+          }).join('')}
+        </div>
+      </div>
       ${tipoHtml}
       <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--text3)">
         <span>● Verde ≥80% · Âmbar ≥60% · Vermelho &lt;60%</span>
@@ -2279,9 +2354,15 @@ function renderSupplyTecido(an, tot, kpisHtml, chartHtml) {
   const lista = Object.entries(tecs)
     .filter(([t, d]) => d.qtd_prod > 0 || d.qtd_venda > 0)
     .sort((a, b) => {
+      // Estoque Anterior sempre por último
       if (a[0] === 'Estoque Anterior') return 1;
       if (b[0] === 'Estoque Anterior') return -1;
-      return b[1].qtd_prod - a[1].qtd_prod;
+      const col = scState.sortTecCol || 'qtd_prod';
+      const dir = scState.sortTecDir || -1;
+      let av = a[1][col], bv = b[1][col];
+      if (av == null) av = dir > 0 ? Infinity : -Infinity;
+      if (bv == null) bv = dir > 0 ? Infinity : -Infinity;
+      return (av - bv) * dir;
     });
 
   // Paleta de tecidos
@@ -2346,11 +2427,28 @@ function renderSupplyTecido(an, tot, kpisHtml, chartHtml) {
       </div>`;
     }).join('');
 
+  const tecSortPills = [
+    {k:'qtd_prod',     l:'Prod'},
+    {k:'qtd_venda',    l:'Venda'},
+    {k:'assertiv_corr',l:'Assertiv.'},
+    {k:'gap_pcs',      l:'Gap'},
+    {k:'saldo',        l:'Saldo'},
+    {k:'receita',      l:'Receita'},
+    {k:'n_super',      l:'Alta dem.'},
+  ].map(s => {
+    const active = scState.sortTecCol === s.k;
+    const arrow  = active ? (scState.sortTecDir > 0 ? ' ↑' : ' ↓') : '';
+    return `<button onclick="scSetSortTec('${s.k}')" style="padding:3px 9px;border-radius:20px;border:1px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent)':'transparent'};color:${active?'#fff':'var(--text3)'};font-size:10px;font-weight:${active?600:400};cursor:pointer;font-family:var(--sans)">${s.l}${arrow}</button>`;
+  }).join('');
+
   const tecChartHtml = `<div class="sc-tipo-chart" style="margin-bottom:16px">
-    <div class="trend-head" style="margin-bottom:14px">
-      <h4>Produção vs Venda por Tecido — Março 2026</h4>
-      <div style="display:flex;gap:16px;font-size:10px;color:var(--text3)">
-        <span>Assertividade de planejamento (excl. alta demanda)</span>
+    <div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <h4 style="margin:0">Produção vs Venda por Tecido — Março 2026</h4>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${tecSortPills}</div>
+      </div>
+      <div style="display:flex;gap:12px;font-size:10px;color:var(--text3);flex-wrap:wrap">
+        <span>Assertiv. de planejamento (excl. alta demanda)</span>
         <span style="color:var(--green)">● ≥80%</span>
         <span style="color:var(--amber)">● ≥55%</span>
         <span style="color:var(--red)">● &lt;55%</span>
@@ -2364,8 +2462,25 @@ function renderSupplyTecido(an, tot, kpisHtml, chartHtml) {
   </div>`;
 
   // ── Tabela por tecido ────────────────────────────────────────────────────────
-  const thCols = ['Tecido','Prod. Março','Vendido','Saldo','Assert. Plan.','Gap Alta Dem.','Produtos Alta Dem.','Receita','Lucro','Margem','Prods'];
-  const thHtml = thCols.map(l => `<th>${l}</th>`).join('');
+  const thColsDef = [
+    {l:'Tecido',           k:null},
+    {l:'Prod. Março',      k:'qtd_prod'},
+    {l:'Vendido',          k:'qtd_venda'},
+    {l:'Saldo',            k:'saldo'},
+    {l:'Assert. Plan.',    k:'assertiv_corr'},
+    {l:'Gap Alta Dem.',    k:'gap_pcs'},
+    {l:'Produtos Alta Dem.',k:null},
+    {l:'Receita',          k:'receita'},
+    {l:'Lucro',            k:null},
+    {l:'Margem',           k:null},
+    {l:'Prods',            k:'n_prods'},
+  ];
+  const thHtml = thColsDef.map(({l,k}) => {
+    if (!k) return `<th>${l}</th>`;
+    const active = scState.sortTecCol === k;
+    const cls = active ? (scState.sortTecDir>0?'sort-asc':'sort-desc') : '';
+    return `<th class="${cls}" onclick="scSetSortTec('${k}')" style="cursor:pointer">${l}</th>`;
+  }).join('');
 
   const tbHtml = lista.map(([tec, d]) => {
     const cor = tecCor[tec];
