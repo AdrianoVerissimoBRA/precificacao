@@ -2399,46 +2399,123 @@ function renderPrec() {
     </tr>`;
   }).join('');
 
-  // ── CARDS ────────────────────────────────────────────────────────────────────
+  // ── CARDS: breakdown de custo com totais ────────────────────────────────────
+  const fRp2 = v => 'R$'+(+v).toFixed(2);
+  const fRt  = v => v>=1e3?'R$'+(v/1e3).toFixed(1)+'k':'R$'+v.toFixed(0);
+  const fRtF = v => 'R$'+Math.round(v).toLocaleString('pt-BR');  // total formatado
+
   const cards = prods.map(r => {
-    const pvCust = getPVProd(r);
-    const calc   = calcPrecificacao(r.custo_pc, pvCust);
-    const mClr   = calc.marg_real>=55?'var(--green)':calc.marg_real>=35?'var(--amber)':'var(--red)';
-    const pvDisp = pvCust > 0 ? pvCust : calc.pv_base;
-    const base   = calc.pv > 0 ? calc.pv : 1;
-    const pCusto = r.custo_pc  / base * 100;
-    const pFrete = p.frete     / base * 100;
-    const pIcms  = calc.icms_val / base * 100;
-    const pDesp  = calc.desp_val / base * 100;
-    const pLucro = Math.max(0, calc.lucro / base * 100);
-    const srcLabel = precState.pvOverride[r.prod]>0 ? 'Override individual' : precState.pvPorTipo[r.classif]>0 ? 'PV por tipo' : `PV calculado (margem ${p.margem}%)`;
+    const pvCust  = getPVProd(r);
+    const calc    = calcPrecificacao(r.custo_pc, pvCust);
+    const mClr    = calc.marg_real>=55?'var(--green)':calc.marg_real>=35?'var(--amber)':'var(--red)';
+    const pvDisp  = calc.pv;
+    const qtd     = r.qtd || 0;          // qtd vendida (base para totais)
+    const cor     = TIPO_COLORS_P[r.classif]||'#888';
+    const srcLabel= precState.pvOverride[r.prod]>0 ? 'Override individual'
+                  : precState.pvPorTipo[r.classif]>0 ? 'PV por tipo'
+                  : 'PV calculado (margem '+p.margem+'%)';
+
+    // Custos unitários
+    const cos_pc  = r.costura_pc || 0;
+    const cor_pc  = r.corte_pc   || 0;
+    const tec_pc  = r.tecido_pc  || 0;
+    const frt_pc  = p.frete;
+    const icm_pc  = calc.icms_val;
+    const des_pc  = calc.desp_val;
+    const tot_pc  = r.custo_pc + frt_pc + icm_pc + des_pc;
+
+    // Totais (× qtd vendida)
+    const cos_t   = cos_pc * qtd;
+    const cor_t   = cor_pc * qtd;
+    const tec_t   = tec_pc * qtd;
+    const frt_t   = frt_pc * qtd;
+    const icm_t   = icm_pc * qtd;
+    const des_t   = des_pc * qtd;
+    const tot_t   = tot_pc * qtd;
+    const rec_t   = r.receita || 0;
+    const luc_t   = r.lucro_t || 0;
+
+    // Barra de composição de custo (proporcional ao custo total)
+    const barBase = tot_pc > 0 ? tot_pc : 1;
+    const bCos = (cos_pc/barBase*100).toFixed(1);
+    const bCor = (cor_pc/barBase*100).toFixed(1);
+    const bTec = (tec_pc/barBase*100).toFixed(1);
+    const bFrt = (frt_pc/barBase*100).toFixed(1);
+    const bIcm = (icm_pc/barBase*100).toFixed(1);
+    const bDes = (des_pc/barBase*100).toFixed(1);
+
+    // Linha de custo: label | R$/pç | total (× qtd)
+    const row = (label, pc, total, clr='var(--text2)', bold=false) =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;color:${clr};${bold?'font-weight:700':''}">${label}</span>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--amber);min-width:54px;text-align:right">${pc>0||bold?fRp2(pc):'—'}</span>
+          <span style="font-size:11px;font-family:var(--mono);color:${clr};min-width:58px;text-align:right;${bold?'font-weight:600':''}">${total>0||bold?fRtF(total):'—'}</span>
+        </div>
+      </div>`;
 
     return `<div class="prec-card">
       <div class="prec-card-header">
-        <span class="prec-card-name">${r.prod}</span>
+        <div>
+          <div class="prec-card-name">${r.prod}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px">${r.tec||'—'} · ${qtd>0?qtd.toLocaleString('pt-BR')+' pç vendidas':'sem venda'}</div>
+        </div>
         <span class="badge badge-${(r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'')}">${r.classif}</span>
       </div>
       <div class="prec-card-body">
-        <div class="prec-row"><span class="prec-row-lbl">Costura/pç</span><span class="prec-row-val amber">${fRp(r.costura_pc||0)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">Corte/pç</span><span class="prec-row-val amber">${(r.corte_pc||0).toFixed(3)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">Tecido/pç</span><span class="prec-row-val amber">${fRp(r.tecido_pc||0)}</span></div>
-        <div class="prec-row" style="font-weight:600"><span class="prec-row-lbl" style="font-weight:700">Custo produção</span><span class="prec-row-val amber" style="font-size:13px">${fRp(r.custo_pc)}</span></div>
-        <div class="prec-divider"></div>
-        <div class="prec-row"><span class="prec-row-lbl">Frete fixo</span><span class="prec-row-val">${fRp(p.frete)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">ICMS (${p.icms}%)</span><span class="prec-row-val">${fRp(calc.icms_val)}</span></div>
-        <div class="prec-row"><span class="prec-row-lbl">Despesa (${p.desp}%)</span><span class="prec-row-val">${fRp(calc.desp_val)}</span></div>
-        <div class="prec-divider"></div>
-        <div class="prec-stack">
-          <div class="prec-stack-seg" style="flex:${pCusto};background:#f59e0b"></div>
-          <div class="prec-stack-seg" style="flex:${pFrete};background:#94a3b8"></div>
-          <div class="prec-stack-seg" style="flex:${pIcms};background:#f87171"></div>
-          <div class="prec-stack-seg" style="flex:${pDesp};background:#c084fc"></div>
-          <div class="prec-stack-seg" style="flex:${pLucro};background:${mClr}"></div>
+
+        <!-- Cabeçalho das colunas -->
+        <div style="display:flex;justify-content:flex-end;gap:12px;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding-bottom:4px;border-bottom:2px solid var(--border2)">
+          <span style="min-width:54px;text-align:right">R$/pç</span>
+          <span style="min-width:58px;text-align:right">Total gasto</span>
         </div>
-        <div style="display:flex;gap:4px;font-size:9px;color:var(--text3);flex-wrap:wrap;margin-bottom:2px">
-          <span>🟡Custo</span><span>⬜Frete</span><span>🔴ICMS</span><span>🟣Desp</span><span style="color:${mClr}">●Lucro</span>
+
+        <!-- Custos de produção -->
+        ${row('Costura', cos_pc, cos_t, '#d97706')}
+        ${row('Corte', cor_pc, cor_t, '#d97706')}
+        ${row('Tecido ('+r.tec+')', tec_pc, tec_t, '#d97706')}
+        ${row('Custo produção', r.custo_pc, r.custo_pc*qtd, 'var(--amber)', true)}
+
+        <!-- Despesas sobre venda -->
+        ${row('Frete fixo', frt_pc, frt_t)}
+        ${row('ICMS ('+p.icms+'%)', icm_pc, icm_t)}
+        ${row('Despesa ('+p.desp+'%)', des_pc, des_t)}
+
+        <!-- Total de desembolso -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;border-top:2px solid var(--border2);margin-top:2px">
+          <span style="font-size:11px;font-weight:700;color:var(--text)">Total desembolso</span>
+          <div style="display:flex;gap:12px">
+            <span style="font-size:12px;font-family:var(--mono);color:var(--text);font-weight:700;min-width:54px;text-align:right">${fRp2(tot_pc)}</span>
+            <span style="font-size:12px;font-family:var(--mono);color:var(--red);font-weight:700;min-width:58px;text-align:right">${fRtF(tot_t)}</span>
+          </div>
         </div>
-        <div class="prec-pv-row">
+
+        <!-- Barra empilhada de composição -->
+        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin:6px 0 2px;gap:1px">
+          <div style="flex:${bCos};background:#d97706" title="Costura ${bCos}%"></div>
+          <div style="flex:${bCor};background:#f59e0b" title="Corte ${bCor}%"></div>
+          <div style="flex:${bTec};background:#b45309" title="Tecido ${bTec}%"></div>
+          <div style="flex:${bFrt};background:#94a3b8" title="Frete ${bFrt}%"></div>
+          <div style="flex:${bIcm};background:#f87171" title="ICMS ${bIcm}%"></div>
+          <div style="flex:${bDes};background:#c084fc" title="Despesa ${bDes}%"></div>
+        </div>
+        <div style="display:flex;gap:8px;font-size:9px;color:var(--text3);margin-bottom:6px;flex-wrap:wrap">
+          <span style="color:#d97706">■ Costura</span><span style="color:#f59e0b">■ Corte</span><span style="color:#b45309">■ Tecido</span>
+          <span style="color:#94a3b8">■ Frete</span><span style="color:#f87171">■ ICMS</span><span style="color:#c084fc">■ Despesa</span>
+        </div>
+
+        <!-- Receita e resultado -->
+        ${qtd>0?`<div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text2)">Receita real (${qtd.toLocaleString('pt-BR')} pç)</span>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--accent);font-weight:600">${fRtF(rec_t)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text2)">Lucro líquido total</span>
+          <span style="font-size:12px;font-family:var(--mono);color:${luc_t>=0?'var(--green)':'var(--red)'};font-weight:600">${fRtF(luc_t)}</span>
+        </div>`:''}
+
+        <!-- PV editável -->
+        <div class="prec-pv-row" style="margin-top:6px">
           <span class="prec-pv-lbl">Preço de Venda R$</span>
           <input class="prec-pv-inp" type="number" min="0" step="0.5"
             value="${pvDisp.toFixed(2)}"
@@ -2446,7 +2523,7 @@ function renderPrec() {
         </div>
         <div class="prec-result">
           <div class="prec-result-box" style="border-color:${mClr}20;background:${mClr}08">
-            <div class="prec-result-val" style="color:${mClr}">${fRp(calc.lucro)}</div>
+            <div class="prec-result-val" style="color:${mClr}">${fRp2(calc.lucro)}</div>
             <div class="prec-result-lbl">Lucro/pç</div>
           </div>
           <div class="prec-result-box" style="border-color:${mClr}20;background:${mClr}08">
@@ -2455,8 +2532,7 @@ function renderPrec() {
           </div>
         </div>
         <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:3px">
-          ${srcLabel}
-          ${pvCust>0?` · <a href="#" onclick="precResetPV('${r.prod}');return false" style="color:var(--accent)">restaurar</a>`:''}
+          ${srcLabel}${pvCust>0?` · <a href="#" onclick="precResetPV('${r.prod}');return false" style="color:var(--accent)">restaurar</a>`:''}
         </div>
       </div>
     </div>`;
