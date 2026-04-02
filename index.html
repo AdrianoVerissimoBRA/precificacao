@@ -1042,6 +1042,7 @@ const COLS = [
   { key:'costura_pc',label:'Costura/pç',       grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
   { key:'corte_pc',  label:'Corte/pç',         grp:'custos', fmt:v=>v!=null&&v>0?`R$${Number(v).toFixed(2)}`:'—' },
   { key:'tecido_pc', label:'Tecido/pç',        grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
+  { key:'frete_pc',  label:'Frete/pç',         grp:'custos', fmt:()=>`R$${dashParams.frete.toFixed(2)}` },
   { key:'icms_pc',   label:'ICMS/pç',          grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
   { key:'desp_pc',   label:'Despesa/pç',       grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
   // RESULTADO
@@ -1097,7 +1098,7 @@ function renderTable() {
       ${vcols.map(c => {
         const v    = d[c.key];
         const cell = c.fmt ? c.fmt(v,d) : (v!=null?v:'—');
-        const al   = ['qtd','receita','pv_real','custo_pc','custo_lote','costura_pc','corte_pc','tecido_pc','icms_pc','desp_pc','lucro_pc','lucro_t'].includes(c.key) ? ' right' : '';
+        const al   = ['qtd','receita','pv_real','custo_pc','custo_lote','costura_pc','corte_pc','tecido_pc','frete_pc','icms_pc','desp_pc','lucro_pc','lucro_t'].includes(c.key) ? ' right' : '';
         return `<td class="${al}">${cell}</td>`;
       }).join('')}
     </tr>`).join('');
