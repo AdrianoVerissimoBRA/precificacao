@@ -909,10 +909,10 @@ function dashSetFilter(key, val) {
   const badge = document.getElementById('dash-filter-badge');
   if (badge) {
     const ativos = Object.entries(dashFilter).filter(([,v])=>v);
+    const lbl = document.getElementById('dash-filter-label');
     if (ativos.length) {
       badge.style.display = 'flex';
-      document.getElementById('dash-filter-label').textContent =
-        ativos.map(([k,v]) => ({tipo:'Tipo',tec:'Tecido',prod:'Produto'}[k]+': '+v).join(' · '));
+      if (lbl) lbl.textContent = ativos.map(([k,v]) => ({tipo:'Tipo',tec:'Tecido',prod:'Produto'}[k]+': '+v).join(' · '));
     } else {
       badge.style.display = 'none';
     }
@@ -958,7 +958,7 @@ function filteredData() {
   const src = VENDAS.resumo || [];
   return src
     .filter(d => activeTipo === 'all' || d.classif === activeTipo)
-    .filter(d => !activeTecido || (d.tecido && d.tecido === activeTecido))
+    .filter(d => !activeTecido || d.tec === activeTecido)
     .filter(d => !dashFilter.tipo || d.classif === dashFilter.tipo)
     .filter(d => !dashFilter.tec  || d.tec     === dashFilter.tec)
     .filter(d => !dashFilter.prod || d.prod     === dashFilter.prod)
@@ -1035,91 +1035,98 @@ function updateCharts() {
   const el = document.getElementById('charts-row');
   if (!el) return;
   el.innerHTML = `
-    <!-- Linha 1: Receita por tipo | Maior margem produto -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div class="chart-card">
-        <h4>Receita real por tipo</h4>
-        <div class="bar-chart">
-          ${sortedTipo.map(([t,v]) => {
-            const marg = v.rec>0 ? v.luc/v.rec*100 : 0;
-            const mClr = marg>=55?'var(--green)':marg>=40?'var(--amber)':'var(--red)';
-            const cor  = TIPO_COLORS[t]||'#6c8fff';
-            const wRec = (v.rec/maxRec*100).toFixed(1);
-            const wLuc = (v.luc/maxRec*100).toFixed(1);
-            const active = dashFilter.tipo===t;
-            return `<div class="bar-row dash-clickable ${active?'dash-active':''}"
-              style="flex-direction:column;gap:3px;padding-bottom:6px;border-bottom:1px solid var(--border);cursor:pointer;${active?'background:var(--bg3);border-radius:6px;padding:4px 6px;':''}"
-              onclick="dashSetFilter('tipo','${t}')" title="Filtrar por ${t}">
-              <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-                <span class="bar-row-label" style="font-weight:600;color:${active?'var(--accent)':cor}">${t} ${active?'✕':''}</span>
-                <span style="font-size:10px;font-family:var(--mono)">
-                  <span style="color:var(--text2)">${fmt2(v.rec)}</span>
-                  <span style="color:${mClr};margin-left:6px;font-weight:600">${marg.toFixed(1)}%</span>
-                </span>
-              </div>
-              <div style="width:100%;position:relative;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden">
-                <div style="position:absolute;left:0;top:0;height:100%;width:${wRec}%;background:${cor};opacity:.3;border-radius:4px"></div>
-                <div style="position:absolute;left:0;top:0;height:100%;width:${wLuc}%;background:${mClr};border-radius:4px"></div>
-              </div>
-              <div style="font-size:10px;color:var(--text3)">Lucro: <span style="color:${mClr};font-weight:500">${fmt2(v.luc)}</span></div>
-            </div>`;
-          }).join('')}
-        </div>
+  <div style="display:grid;grid-template-columns:280px 1fr 1fr;gap:12px;margin-bottom:16px;align-items:start">
+
+    <!-- COL 1: Receita por tipo (clicável) -->
+    <div class="chart-card" style="height:100%">
+      <h4>Receita real por tipo</h4>
+      <div class="bar-chart">
+        ${sortedTipo.map(([t,v]) => {
+          const marg = v.rec>0 ? v.luc/v.rec*100 : 0;
+          const mClr = marg>=55?'var(--green)':marg>=40?'var(--amber)':'var(--red)';
+          const cor  = TIPO_COLORS[t]||'#6c8fff';
+          const wRec = (v.rec/maxRec*100).toFixed(1);
+          const wLuc = (v.luc/maxRec*100).toFixed(1);
+          const active = dashFilter.tipo===t;
+          return `<div class="bar-row dash-clickable ${active?'dash-active':''}"
+            style="flex-direction:column;gap:3px;padding-bottom:6px;border-bottom:1px solid var(--border);cursor:pointer;${active?'background:var(--bg3);border-radius:6px;padding:4px 6px;':''}"
+            onclick="dashSetFilter('tipo','${t}')" title="Filtrar por ${t}">
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+              <span class="bar-row-label" style="font-weight:600;color:${active?'var(--accent)':cor}">${t}${active?' ✕':''}</span>
+              <span style="font-size:10px;font-family:var(--mono)">
+                <span style="color:var(--text2)">${fmt2(v.rec)}</span>
+                <span style="color:${mClr};margin-left:6px;font-weight:600">${marg.toFixed(1)}%</span>
+              </span>
+            </div>
+            <div style="width:100%;position:relative;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+              <div style="position:absolute;left:0;top:0;height:100%;width:${wRec}%;background:${cor};opacity:.25;border-radius:3px"></div>
+              <div style="position:absolute;left:0;top:0;height:100%;width:${wLuc}%;background:${mClr};border-radius:3px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3)">Lucro: <span style="color:${mClr};font-weight:500">${fmt2(v.luc)}</span></div>
+          </div>`;
+        }).join('')}
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="chart-card" style="flex:1">
-          <h4>Maior margem real / produto</h4>
-          <div class="bar-chart">
-            ${top8.map(d => {
-              const clr = d.marg>=55?'#059669':d.marg>=35?'#d97706':'#e5475c';
-              const active = dashFilter.prod===d.prod;
-              return `<div class="bar-row dash-clickable ${active?'dash-active':''}"
-                style="cursor:pointer;${active?'background:var(--bg3);border-radius:5px;padding:2px 5px;':''}"
-                onclick="dashSetFilter('prod','${d.prod}')" title="Filtrar por ${d.prod}">
-                <div class="bar-row-label" style="color:${active?'var(--accent)':'inherit'}">${d.prod||''}${active?' ✕':''}</div>
-                <div class="bar-row-bar"><div class="bar-row-fill" style="width:${(d.marg/maxMarg*100).toFixed(1)}%;background:${clr}"></div></div>
-                <div class="bar-row-val" style="color:${clr}">${d.marg?.toFixed(1)}%</div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-        <div class="chart-card" style="flex:1">
-          <h4>Margem real por tecido</h4>
-          <div class="bar-chart">
-            ${(()=>{
-              const byTec = {};
-              fd.forEach(d => {
-                if (!d.tec || d.classif==='S/R' || d.lucro_t==null) return;
-                if (!byTec[d.tec]) byTec[d.tec]={rec:0,luc:0};
-                byTec[d.tec].rec += d.receita||0;
-                byTec[d.tec].luc += d.lucro_t||0;
-              });
-              const tecList = Object.entries(byTec)
-                .map(([t,v])=>({tec:t,marg:v.rec>0?v.luc/v.rec*100:0,rec:v.rec,luc:v.luc}))
-                .sort((a,b)=>b.marg-a.marg);
-              const maxM = Math.max(...tecList.map(t=>t.marg),1);
-              const TEC_PAL=['#4f72e3','#059669','#d97706','#e5475c','#7c3aed','#0891b2','#b45309','#be185d','#065f46','#6b21a8','#1d4ed8','#15803d','#92400e','#888'];
-              return tecList.map((t,i)=>{
-                const clr = TEC_PAL[i%TEC_PAL.length];
-                const mClr = t.marg>=50?clr:t.marg>=35?'#d97706':'#e5475c';
-                const fmt2 = v=>v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
-                const active = dashFilter.tec===t.tec;
-                return '<div class="bar-row dash-clickable'+(active?' dash-active':'')+'"'
-                  +' style="cursor:pointer;'+(active?'background:var(--bg3);border-radius:5px;padding:2px 5px;':'')+'"'
-                  +' onclick="dashSetFilter(\'tec\',\''+t.tec+'\')" title="Filtrar por '+t.tec+'">'
-                  +'<div class="bar-row-label" style="color:'+(active?'var(--accent)':'inherit')+'">'+t.tec+(active?' ✕':'')+'</div>'
-                  +'<div class="bar-row-bar"><div class="bar-row-fill" style="width:'+((t.marg/maxM)*100).toFixed(1)+'%;background:'+mClr+'"></div></div>'
-                  +'<div style="display:flex;gap:8px;align-items:center;flex-shrink:0">'
-                  +'<span style="font-size:10px;color:var(--text3);font-family:var(--mono)">'+fmt2(t.rec)+'</span>'
-                  +'<span class="bar-row-val" style="color:'+mClr+'">'+t.marg.toFixed(1)+'%</span>'
-                  +'</div></div>';
-              }).join('');
-            })()}
-          </div>
-        </div>
+    </div>
+
+    <!-- COL 2: Maior margem real / produto (clicável) -->
+    <div class="chart-card">
+      <h4>Maior margem real / produto</h4>
+      <div class="bar-chart">
+        ${top8.map(d => {
+          const clr    = d.marg>=55?'#059669':d.marg>=35?'#d97706':'#e5475c';
+          const active = dashFilter.prod===d.prod;
+          return `<div class="bar-row dash-clickable ${active?'dash-active':''}"
+            style="cursor:pointer;${active?'background:var(--bg3);border-radius:5px;padding:2px 5px;':''}"
+            onclick="dashSetFilter('prod','${d.prod}')" title="Filtrar por ${d.prod}">
+            <div class="bar-row-label" style="color:${active?'var(--accent)':'inherit'}">${d.prod||''}${active?' ✕':''}</div>
+            <div class="bar-row-bar"><div class="bar-row-fill" style="width:${(d.marg/maxMarg*100).toFixed(1)}%;background:${clr}"></div></div>
+            <div class="bar-row-val" style="color:${clr}">${d.marg?.toFixed(1)}%</div>
+          </div>`;
+        }).join('')}
       </div>
-    </div>`;
+    </div>
+
+    <!-- COL 3: Margem real por tecido (clicável) -->
+    <div class="chart-card">
+      <h4>Margem real por tecido</h4>
+      <div class="bar-chart">
+        ${(()=>{
+          const byTec = {};
+          // Usar todos os dados (sem filtro de tecido) para listar tecidos disponíveis
+          const allProds = VENDAS.resumo||[];
+          allProds.forEach(d => {
+            if (!d.tec || d.classif==='S/R' || d.lucro_t==null) return;
+            if (!byTec[d.tec]) byTec[d.tec]={rec:0,luc:0};
+            byTec[d.tec].rec += d.receita||0;
+            byTec[d.tec].luc += d.lucro_t||0;
+          });
+          const tecList = Object.entries(byTec)
+            .map(([t,v])=>({tec:t,marg:v.rec>0?v.luc/v.rec*100:0,rec:v.rec}))
+            .sort((a,b)=>b.marg-a.marg);
+          const maxM  = Math.max(...tecList.map(t=>t.marg),1);
+          const TEC_PAL=['#4f72e3','#059669','#d97706','#e5475c','#7c3aed','#0891b2','#b45309','#be185d','#065f46','#6b21a8','#1d4ed8','#15803d','#92400e','#888'];
+          return tecList.map((t,i)=>{
+            const cor   = TEC_PAL[i%TEC_PAL.length];
+            const mClr  = t.marg>=50?cor:t.marg>=35?'#d97706':'#e5475c';
+            const fmt2l = v=>v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
+            const active = dashFilter.tec===t.tec;
+            return '<div class="bar-row dash-clickable'+(active?' dash-active':'')+'"'
+              +' style="cursor:pointer;'+(active?'background:var(--bg3);border-radius:5px;padding:2px 5px;':'')+'"'
+              +' onclick="dashSetFilter(\'tec\',\''+t.tec+'\')" title="Filtrar por '+t.tec+'">'
+              +'<div class="bar-row-label" style="color:'+(active?'var(--accent)':'inherit')+'">'+t.tec+(active?' ✕':'')+'</div>'
+              +'<div class="bar-row-bar"><div class="bar-row-fill" style="width:'+((t.marg/maxM)*100).toFixed(1)+'%;background:'+mClr+'"></div></div>'
+              +'<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'
+              +'<span style="font-size:10px;color:var(--text3);font-family:var(--mono)">'+fmt2l(t.rec)+'</span>'
+              +'<span class="bar-row-val" style="color:'+mClr+'">'+t.marg.toFixed(1)+'%</span>'
+              +'</div></div>';
+          }).join('');
+        })()}
+      </div>
+    </div>
+
+  </div>`;
 }
+
 
 
 // ── TABLE ─────────────────────────────────────────────────────────────────
@@ -1216,7 +1223,7 @@ function toast(msg) {
 function buildTipoResumo() {
   const el = document.getElementById('tipo-resumo');
   if (!el) return;
-  const src = VENDAS.resumo || [];
+  const src = filteredData();
   const TIPOS_LIST = ['Top','Vestido','Body','Calça','Saia','Blusa','Tricot','S/R'];
   const byTipo = {};
   src.forEach(d => {
@@ -2192,6 +2199,7 @@ function buildSupply() {
 // ══════════════════════════════════════════════════════════════════════════════
 let precState = {
   filtTipo: 'all',
+  filtTec:  'all',
   busca: '',
   params: { margem:50, icms:12, desp:5, frete:4 },
   pvOverride: {},      // { prod: pvCustom }
@@ -2247,6 +2255,22 @@ function buildPrecSide() {
     </button>`).join('')}
 
     <div class="side-sep"></div>
+    <h4>Tecido Principal</h4>
+    ${(()=>{
+      const tecs = [...new Set(prods.map(r=>r.tec||'').filter(Boolean))].sort();
+      const contTec = Object.fromEntries(tecs.map(t=>[t, prods.filter(r=>r.tec===t).length]));
+      const rows = [
+        '<button class="prec-tipo-btn '+(precState.filtTec==="all"?"active":"")+'" onclick="precSetTec(\'all\')">'
+          +'<span>Todos</span><span class="prec-tipo-cnt">'+prods.length+'</span></button>',
+        ...tecs.map(t =>
+          '<button class="prec-tipo-btn '+(precState.filtTec===t?"active":"")+'" onclick="precSetTec(\''+t+'\')">'
+          +'<span>'+t+'</span><span class="prec-tipo-cnt">'+(contTec[t]||0)+'</span></button>'
+        )
+      ];
+      return rows.join('');
+    })()}
+
+    <div class="side-sep"></div>
     <h4>PV Global por Tipo</h4>
     <div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.4">
       Define o PV para todos os produtos do tipo. Override individual tem prioridade.
@@ -2294,7 +2318,8 @@ function precParamChange(key, val) {
   precState.params[key] = parseFloat(val) || 0;
   renderPrec();
 }
-function precSetTipo(t) { precState.filtTipo=t; buildPrecSide(); renderPrec(); }
+function precSetTipo(t) { precState.filtTipo=t; precState.filtTec='all'; buildPrecSide(); renderPrec(); }
+function precSetTec(t)  { precState.filtTec=t;  buildPrecSide(); renderPrec(); }
 
 function renderPrec() {
   const p = precState.params;
@@ -2303,7 +2328,8 @@ function renderPrec() {
   const todos = VENDAS.resumo.filter(r => r.classif!=='S/R' && r.custo_pc!=null);
   const prods = todos
     .filter(r => precState.filtTipo==='all' || r.classif===precState.filtTipo)
-    .filter(r => !q || r.prod.toLowerCase().includes(q) || (r.classif||'').toLowerCase().includes(q))
+    .filter(r => precState.filtTec==='all'  || r.tec===precState.filtTec)
+    .filter(r => !q || r.prod.toLowerCase().includes(q) || (r.classif||'').toLowerCase().includes(q) || (r.tec||'').toLowerCase().includes(q))
     .sort((a,b) => {
       const k = precState.sortCol;
       const getV = r => {
@@ -2702,6 +2728,7 @@ function renderAll() {
   renderTable();
   updateKPIs();
   updateCharts();
+  try { buildTipoResumo(); } catch(e){}
 }
 
 // Init seguro — guards contra elementos não existentes
