@@ -1228,25 +1228,27 @@ function buildTipoResumo() {
     byTipo[t].n++;
   });
   const CORES = {Top:'#d97706',Vestido:'#059669',Body:'#e5475c',Calça:'#4f72e3',Saia:'#7c3aed',Blusa:'#0891b2',Tricot:'#b45309','S/R':'#888'};
-  el.innerHTML = TIPOS_LIST.filter(t=>byTipo[t]).map(t => {
-    const v = byTipo[t];
-    const marg = v.rec>0 ? (v.luc/v.rec*100).toFixed(0) : '—';
-    const fmtR = x => x>=1e3?'R$'+(x/1e3).toFixed(1)+'k':'R$'+x.toFixed(0);
+  const fmtR = x => x>=1e6?'R$'+(x/1e6).toFixed(1)+'M':x>=1e3?'R$'+(x/1e3).toFixed(0)+'k':'R$'+x.toFixed(0);
+  el.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px';
+  el.innerHTML = TIPOS_LIST.filter(t=>byTipo[t]&&t!=='S/R').map(t => {
+    const v   = byTipo[t];
+    const marg= v.rec>0 ? (v.luc/v.rec*100) : 0;
     const cor = CORES[t]||'#888';
-    const margCls = parseFloat(marg)>=55?'color:var(--green)':parseFloat(marg)>=35?'color:var(--amber)':'color:var(--red)';
-    return `<div style="background:var(--bg3);border-radius:8px;padding:8px 10px;border-left:3px solid ${cor}">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:11px;font-weight:600;color:${cor}">${t}</span>
-        <span style="font-size:10px;color:var(--text3)">${v.n} SKU${v.n!==1?'s':''}</span>
+    const mClr= marg>=55?'var(--green)':marg>=35?'var(--amber)':'var(--red)';
+    const active = dashFilter.tipo === t;
+    return `<div onclick="dashSetFilter('tipo','${t}')"
+      style="background:var(--bg3);border-radius:7px;padding:6px 9px;border-left:3px solid ${cor};cursor:pointer;transition:all .12s;${active?'outline:2px solid var(--accent);outline-offset:1px;':''}"
+      title="Filtrar por ${t}">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;font-weight:700;color:${cor}">${t}${active?' ✕':''}</span>
+        <span style="font-size:10px;font-family:var(--mono);color:${mClr};font-weight:600">${marg.toFixed(0)}%</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <span style="font-size:12px;font-weight:600;color:var(--text)">${fmtR(v.rec)}</span>
-        <span style="font-size:11px;font-family:var(--mono);${margCls}">${marg}%</span>
-      </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:2px">${v.qtd.toLocaleString('pt-BR')} peças · lucro ${fmtR(v.luc)}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text);margin-top:1px">${fmtR(v.rec)}</div>
+      <div style="font-size:9px;color:var(--text3)">${v.qtd.toLocaleString('pt-BR')} pç · ${fmtR(v.luc)}</div>
     </div>`;
   }).join('');
 }
+
 
 // ── TAB SWITCH ────────────────────────────────────────────────────────────
 function switchTab(tab) {
