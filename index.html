@@ -2435,6 +2435,7 @@ function renderPrec() {
     const frt_pc  = p.frete;
     const icm_pc  = calc.icms_val;
     const des_pc  = calc.desp_val;
+    const avi_pc  = r.aviamento_pc || 0;
     const tot_pc  = r.custo_pc + frt_pc + icm_pc + des_pc;
 
     // Totais (× qtd vendida)
@@ -2453,6 +2454,7 @@ function renderPrec() {
     const bCos = (cos_pc/barBase*100).toFixed(1);
     const bCor = (cor_pc/barBase*100).toFixed(1);
     const bTec = (tec_pc/barBase*100).toFixed(1);
+    const bAvi = (avi_pc/barBase*100).toFixed(1);
     const bFrt = (frt_pc/barBase*100).toFixed(1);
     const bIcm = (icm_pc/barBase*100).toFixed(1);
     const bDes = (des_pc/barBase*100).toFixed(1);
