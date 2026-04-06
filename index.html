@@ -2562,7 +2562,14 @@ function renderPrec() {
   }).join('');
 
   document.getElementById('prec-body').innerHTML = `
-    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">Precificação por Produto</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div style="font-size:14px;font-weight:600;color:var(--text)">Precificação por Produto</div>
+      <a href="precificacao_pangeia96.xlsx" download="Precificacao_Pangeia96.xlsx"
+         style="display:flex;align-items:center;gap:6px;background:#059669;color:#fff;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:600;text-decoration:none;transition:opacity .15s"
+         onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        ⬇ Download XLSX
+      </a>
+    </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:6px">
       ${simAtivo?'<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;margin-right:6px">● PV CUSTOMIZADO ATIVO</span>':''}
       Parâmetros: Margem ${p.margem}% · ICMS ${p.icms}% · Frete R$${p.frete} · Despesa ${p.desp}%
