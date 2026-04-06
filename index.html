@@ -419,7 +419,7 @@ td.center { text-align: center; }
 <div id="page-dashboard">
 <!-- PARÂMETROS DE CÁLCULO -->
 <div id="dash-params-bar" style="display:flex;align-items:center;gap:12px;padding:8px 20px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap">
-  <span style="color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Parâmetros de custo</span>
+  <span style="color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Parâmetros de Custo</span>
   <div style="width:1px;height:16px;background:var(--border)"></div>
   <label style="display:flex;align-items:center;gap:5px;color:var(--text2)">
     <span>ICMS</span>
@@ -442,39 +442,39 @@ td.center { text-align: center; }
       oninput="dashParamChange('frete',this.value)">
     <span style="color:var(--text3)">R$</span>
   </label>
-  <span style="color:var(--text3);font-size:10px">Lucro = PV − Custo − Frete − ICMS − Despesa · Altere para recalcular em tempo real</span>
+  <span style="color:var(--text3);font-size:10px">MC = Receita − CPV − Frete − ICMS − Desp. Oper. · Altere para recalcular em tempo real</span>
 </div>
 <!-- KPI STRIP -->
 <div class="kpi-strip">
   <div class="kpi">
-    <div class="kpi-label">Receita Real (Cliente)</div>
+    <div class="kpi-label">Receita Bruta</div>
     <div class="kpi-value accent" id="kpi-receita">—</div>
-    <div class="kpi-sub">valor pago pelo cliente</div>
+    <div class="kpi-sub">total faturado no período</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Custo de Produção</div>
+    <div class="kpi-label">CPV</div>
     <div class="kpi-value amber" id="kpi-custo">—</div>
-    <div class="kpi-sub">costura + corte + tecido + aviamento</div>
+    <div class="kpi-sub">custo direto do produto vendido</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Lucro Real</div>
+    <div class="kpi-label">Margem de Contribuição</div>
     <div class="kpi-value green" id="kpi-lucro">—</div>
-    <div class="kpi-sub">receita − custo − frete − ICMS − desp.</div>
+    <div class="kpi-sub">receita − CPV − frete − ICMS − desp. oper.</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Margem Real</div>
+    <div class="kpi-label">% Margem de Contribuição</div>
     <div class="kpi-value green" id="kpi-margem">—</div>
-    <div class="kpi-sub">lucro ÷ receita cliente</div>
+    <div class="kpi-sub">MC ÷ Receita Bruta</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Ticket Médio / Peça</div>
     <div class="kpi-value accent" id="kpi-ticket">—</div>
-    <div class="kpi-sub">preço médio pago</div>
+    <div class="kpi-sub">preço médio por peça vendida</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Custo Médio / Peça</div>
+    <div class="kpi-label">CPV Médio / Peça</div>
     <div class="kpi-value amber" id="kpi-custo-pc">—</div>
-    <div class="kpi-sub">produtos com referência</div>
+    <div class="kpi-sub">custo direto médio por peça</div>
   </div>
 </div>
 
@@ -1043,7 +1043,7 @@ function updateCharts() {
 
     <!-- COL 1: Receita por tipo (clicável) -->
     <div class="chart-card" style="height:100%">
-      <h4>Receita real por tipo</h4>
+      <h4>Receita Bruta por Tipo</h4>
       <div class="bar-chart">
         ${sortedTipo.map(([t,v]) => {
           const marg = v.rec>0 ? v.luc/v.rec*100 : 0;
@@ -1074,7 +1074,7 @@ function updateCharts() {
 
     <!-- COL 2: Maior margem real / produto (clicável) -->
     <div class="chart-card">
-      <h4>Maior margem real / produto</h4>
+      <h4>Maior % Margem Contribuição / Produto</h4>
       <div class="bar-chart">
         ${top8.map(d => {
           const clr    = d.marg>=55?'#059669':d.marg>=35?'#d97706':'#e5475c';
@@ -1092,7 +1092,7 @@ function updateCharts() {
 
     <!-- COL 3: Margem real por tecido (clicável) -->
     <div class="chart-card">
-      <h4>Margem real por tecido</h4>
+      <h4>% Margem de Contribuição por Tecido</h4>
       <div class="bar-chart">
         ${(()=>{
           const byTec = {};
@@ -1164,7 +1164,7 @@ const COLS = [
       const fmt2 = abs>=1e3?'R$'+(abs/1e3).toFixed(1)+'k':'R$'+abs.toFixed(0);
       return `<span style="color:${clr};font-weight:600">${v<0?'▼ ':' '}${fmt2}</span>`;
     }},
-  { key:'marg',      label:'Margem Real',      grp:'preco',  fmt:(v,d)=>{
+  { key:'marg',      label:'% Margem de Contribuição',      grp:'preco',  fmt:(v,d)=>{
       if(v==null) return '<span class="val-muted">S/R</span>';
       const clr = v>=60?'#059669':v>=40?'#d97706':'#e5475c';
       return `<div class="lucro-bar-wrap">
@@ -1841,7 +1841,7 @@ function buildSupplySide() {
       {k:'gap_pcs',   l:'Gap (alta dem.)'},
       {k:'saldo',     l:'Saldo estoque'},
       {k:'receita',   l:'Receita'},
-      {k:'marg',      l:'Margem %'},
+      {k:'marg',      l:'MC %'},
     ].map(s => {
       const active = scState.sortCol === s.k;
       const dir    = active ? (scState.sortDir > 0 ? ' ↑' : ' ↓') : '';
@@ -2301,7 +2301,7 @@ function buildPrecSide() {
     <h4>Parâmetros Globais</h4>
     <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
       ${[
-        {k:'margem', l:'Margem %',   s:'%', v: precState.params.margem},
+        {k:'margem', l:'MC %',   s:'%', v: precState.params.margem},
         {k:'icms',   l:'ICMS %',     s:'%', v: precState.params.icms},
         {k:'desp',   l:'Despesa %',  s:'%', v: precState.params.desp},
         {k:'frete',  l:'Frete R$',   s:'R$',v: precState.params.frete},
