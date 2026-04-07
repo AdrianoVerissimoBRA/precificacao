@@ -3013,6 +3013,36 @@ let ttState = {
 // Cópia mutável dos itens TikTok
 let ttItems = TT_DATA.map((r,i) => ({...r, _idx: i}));
 
+
+// Definição de colunas TikTok com grupos para visibilidade
+const TT_COLS = [
+  { key:'prod',         label:'Produto',               grp:'id',        always:true },
+  { key:'classif',      label:'Tipo',                  grp:'id',        always:false },
+  { key:'tec',          label:'Tecido',                grp:'id',        always:false },
+  { key:'cor',          label:'Cor',                   grp:'id',        always:false },
+  { key:'desembolso_tt',label:'Custo Total',           grp:'custos',    always:false, tip:'CPV + Frete + CF + Imp + Taxa + Comissão' },
+  { key:'custo',        label:'Custo CMV',             grp:'custos',    always:false, tip:'Custo de produção — sistema Pangeia 96' },
+  { key:'comp',         label:'Composição',            grp:'custos',    always:false, tip:'Etiquetas + embalagem R$0,43/pç' },
+  { key:'pv_orig',      label:'PV Original',           grp:'precos',    always:false, tip:'Valor original do produto' },
+  { key:'pv_desc',      label:'PV Campanha',           grp:'precos',    always:false, tip:'Valor de venda na campanha TikTok' },
+  { key:'cf',           label:'Custo Fixo',            grp:'taxas',     always:false, tip:'% do PV campanha' },
+  { key:'imp',          label:'Imposto',               grp:'taxas',     always:false, tip:'% do PV' },
+  { key:'taxa',         label:'Taxa TT',               grp:'taxas',     always:false, tip:'% do PV' },
+  { key:'frete',        label:'Frete',                 grp:'taxas',     always:false, tip:'R$/pç' },
+  { key:'com_n',        label:'Comissão Creator Normal',grp:'comissao', always:false, tip:'% Creators normais' },
+  { key:'com_t',        label:'Comissão Top Creator',  grp:'comissao',  always:false, tip:'% Top Creator' },
+  { key:'lucro',        label:'Lucro (Creator Normal)',grp:'resultado',  always:false, tip:'Lucro por peça com comissão de creator normal' },
+  { key:'marg',         label:'MC % (Creator Normal)', grp:'resultado', always:false, tip:'Margem de contribuição com creator normal' },
+  { key:'lucroT',       label:'Lucro (Top Creator)',   grp:'resultado',  always:false, tip:'Lucro por peça com comissão de Top Creator' },
+  { key:'margT',        label:'MC % (Top Creator)',    grp:'resultado',  always:false, tip:'Margem de contribuição com Top Creator' },
+];
+
+// Colunas visíveis por padrão
+let ttVisibleCols = new Set([
+  'prod','classif','tec','cor','desembolso_tt','custo',
+  'pv_orig','pv_desc','lucro','marg','lucroT','margT'
+]);
+
 function ttCalc(item) {
   const p = ttState.params;
   const pv  = (ttState.pvDescOverride[item._idx] ?? item.pv_desc);
@@ -3053,6 +3083,25 @@ function ttPVChange(idx, field, val) {
 function ttSort(col) {
   if (ttState.sortCol===col) ttState.sortDir*=-1;
   else { ttState.sortCol=col; ttState.sortDir=1; }
+  renderTT();
+}
+
+function ttToggleCol(key) {
+  if (ttVisibleCols.has(key)) {
+    ttVisibleCols.delete(key);
+  } else {
+    ttVisibleCols.add(key);
+  }
+  renderTT();
+}
+
+function ttResetCols() {
+  ttVisibleCols = new Set(['prod','classif','tec','cor','desembolso_tt','custo','pv_orig','pv_desc','lucro','marg','lucroT','margT']);
+  renderTT();
+}
+
+function ttHideAll() {
+  ttVisibleCols = new Set(); // limpar tudo — prod é always:true, sempre aparece
   renderTT();
 }
 
@@ -3107,10 +3156,11 @@ function buildTTResumo(items) {
 }
 
 function renderTT() {
-  const fRp = v => 'R$'+(+v).toFixed(2);
-  const fPct= v => v.toFixed(1)+'%';
-  const fR  = v => v>=1e3?'R$'+(v/1e3).toFixed(1)+'k':'R$'+v.toFixed(0);
+  const fRp  = v => 'R$'+(+v).toFixed(2);
+  const fPct = v => v.toFixed(1)+'%';
+  const GRP_COLORS = { id:'#475569', custos:'#7B2D8B', precos:'#1D4ED8', taxas:'#DC2626', comissao:'#0891b2', resultado:'#059669' };
 
+  // ── Ordenação ──────────────────────────────────────────────────────────────
   const items = [...ttItems].sort((a,b) => {
     const k = ttState.sortCol;
     const getV = r => {
@@ -3121,9 +3171,9 @@ function renderTT() {
       const c = ttCalc(r);
       if (k==='desembolso_tt') return (r.custo_pc||0)+c.frete+c.cf+c.imp+c.taxa+c.com_n;
       if (k==='custo')   return r.custo_pc;
-      if (k==='comp')    return r.composicao_pc || 0.43;
-      if (k==='pv_desc') return c.pv;
+      if (k==='comp')    return r.composicao_pc||0.43;
       if (k==='pv_orig') return c.pvo;
+      if (k==='pv_desc') return c.pv;
       if (k==='cf')      return c.cf;
       if (k==='imp')     return c.imp;
       if (k==='taxa')    return c.taxa;
@@ -3140,25 +3190,50 @@ function renderTT() {
     return (typeof av==='string' ? av.localeCompare(bv) : (av-bv)) * ttState.sortDir;
   });
 
-  const th = (col, lbl, title='') => {
-    const s = ttState.sortCol===col;
-    const cls = s?(ttState.sortDir>0?'sort-asc':'sort-desc'):'';
-    return `<th class="${cls}" onclick="ttSort('${col}')" style="cursor:pointer;user-select:none" title="${title}">${lbl}</th>`;
-  };
+  // ── Colunas visíveis ───────────────────────────────────────────────────────
+  const visCols = TT_COLS.filter(c => c.always || ttVisibleCols.has(c.key));
 
-  const thHtml = [
-    th('prod','Produto'), th('classif','Tipo'), th('tec','Tecido'), th('cor','Cor'),
-    th('desembolso_tt','Custo Total','CPV + Frete + CF + Imp + Taxa + Comissão'), th('custo','Custo CMV','Custo de produção — sistema Pangeia 96'), th('comp','Composição','Etiquetas + embalagem R$0,43/pç'),
-    th('pv_orig','PV Original','Valor original do produto'), th('pv_desc','PV Campanha','Valor de venda na campanha TikTok'),
-    th('cf','Custo Fixo','% do PV campanha'), th('imp','Imposto','% do PV'),
-    th('taxa','Taxa TT','% do PV'), th('frete','Frete','R$/pç'),
-    th('com_n','Comissão Creator Normal','% Creators normais'),
-    th('com_t','Comissão Top Creator','% Top Creator'),
-    th('lucro','Lucro (Creator Normal)','Lucro por peça com comissão de creator normal'),
-    th('marg','MC % (Creator Normal)','Margem de contribuição com creator normal'),
-    th('lucroT','Lucro (Top Creator)','Lucro por peça com comissão de Top Creator'),
-    th('margT','MC % (Top Creator)','Margem de contribuição com Top Creator'),
-  ].join('');
+  // ── Barra de toggles ───────────────────────────────────────────────────────
+  let toggleHtml = '<div style="display:flex;flex-wrap:wrap;gap:5px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;align-items:center">';
+  toggleHtml += '<span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-right:6px;white-space:nowrap">Colunas visíveis:</span>';
+  TT_COLS.filter(c => !c.always).forEach(c => {
+    const active = ttVisibleCols.has(c.key);
+    const clr = GRP_COLORS[c.grp] || '#888';
+    toggleHtml += '<button onclick="ttToggleCol(\'' + c.key + '\')"'
+      + ' title="' + (c.tip||c.label) + '"'
+      + ' style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;'
+      + 'border:1.5px solid ' + (active ? clr : 'var(--border2)') + ';'
+      + 'background:' + (active ? clr+'22' : 'transparent') + ';'
+      + 'color:' + (active ? clr : 'var(--text3)') + ';'
+      + 'font-size:10px;font-weight:' + (active ? 700 : 400) + ';'
+      + 'cursor:pointer;white-space:nowrap">'
+      + '<span style="width:6px;height:6px;border-radius:50%;background:' + (active ? clr : 'var(--border2)') + ';flex-shrink:0;display:inline-block"></span>'
+      + c.label + '</button>';
+  });
+  toggleHtml += '<button onclick="ttResetCols()"'
+    + ' style="padding:3px 9px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;margin-left:4px">↺ Resetar</button>';
+  toggleHtml += '<button onclick="ttHideAll()"'
+    + ' style="padding:3px 9px;border-radius:20px;border:1px solid #DC2626;background:transparent;color:#DC2626;font-size:10px;cursor:pointer;margin-left:2px">✕ Ocultar todas</button>';
+  toggleHtml += '</div>';
+
+  // ── Thead ──────────────────────────────────────────────────────────────────
+  const thHtml = visCols.map(c => {
+    const s = ttState.sortCol===c.key;
+    const cls = s ? (ttState.sortDir>0 ? 'sort-asc' : 'sort-desc') : '';
+    const clr = GRP_COLORS[c.grp] || '';
+    return '<th class="' + cls + '" onclick="ttSort(\'' + c.key + '\')"'
+      + ' title="' + (c.tip||'') + '"'
+      + ' style="cursor:pointer;user-select:none' + (clr ? ';color:'+clr : '') + '">'
+      + c.label + '</th>';
+  }).join('');
+
+  // ── Tbody ──────────────────────────────────────────────────────────────────
+  const inpStyle = active =>
+    'width:64px;background:' + (active?'var(--bg3)':'transparent') + ';'
+    + 'border:' + (active?'1.5px solid var(--accent)':'1px solid var(--border2)') + ';'
+    + 'border-radius:5px;color:' + (active?'var(--accent)':'var(--text)') + ';'
+    + 'font-family:var(--mono);font-size:11px;font-weight:' + (active?700:400) + ';'
+    + 'padding:2px 5px;text-align:right;outline:none';
 
   const tbHtml = items.map(r => {
     const c = ttCalc(r);
@@ -3167,66 +3242,79 @@ function renderTT() {
     const hasDescOvr = ttState.pvDescOverride[r._idx] != null;
     const hasOrigOvr = ttState.pvOrigOverride[r._idx] != null;
 
-    const inpStyle = (active) =>
-      `width:64px;background:${active?'var(--bg3)':'transparent'};border:${active?'1.5px solid var(--accent)':'1px solid var(--border2)'};border-radius:5px;color:${active?'var(--accent)':'var(--text)'};font-family:var(--mono);font-size:11px;font-weight:${active?700:400};padding:2px 5px;text-align:right;outline:none`;
+    const cellMap = {
+      prod:         '<td style="font-weight:600;white-space:nowrap">' + r.prod + '</td>',
+      classif:      '<td><span class="badge badge-' + (r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'') + '">' + r.classif + '</span></td>',
+      tec:          '<td style="font-size:11px;color:var(--text2)">' + (r.tec||'—') + '</td>',
+      cor:          '<td style="font-size:11px;color:var(--text3)">' + (r.cor||'—') + '</td>',
+      desembolso_tt:'<td class="num" style="font-weight:700;color:#fff;background:#7B2D8B;border-radius:4px">' + fRp((r.custo_pc||0)+c.frete+c.cf+c.imp+c.taxa+c.com_n) + '</td>',
+      custo:        '<td class="num" style="color:var(--amber);font-weight:500">' + fRp(r.custo_pc||0) + '</td>',
+      comp:         '<td class="num" style="color:#0891b2;font-weight:500">' + fRp(r.composicao_pc||0.43) + '</td>',
+      pv_orig:      '<td class="num"><input type="number" min="0" step="0.5" value="' + c.pvo.toFixed(2) + '" style="' + inpStyle(hasOrigOvr) + '" oninput="ttPVChange(' + r._idx + ',\'orig\',this.value)" title="PV Original"></td>',
+      pv_desc:      '<td class="num"><input type="number" min="0" step="0.5" value="' + c.pv.toFixed(2) + '" style="' + inpStyle(hasDescOvr) + '" oninput="ttPVChange(' + r._idx + ',\'desc\',this.value)" title="PV Campanha"></td>',
+      cf:           '<td class="num" style="color:var(--text2)">' + fRp(c.cf) + '</td>',
+      imp:          '<td class="num" style="color:#DC2626">' + fRp(c.imp) + '</td>',
+      taxa:         '<td class="num" style="color:#7C3AED">' + fRp(c.taxa) + '</td>',
+      frete:        '<td class="num" style="color:var(--text2)">' + fRp(c.frete) + '</td>',
+      com_n:        '<td class="num" style="color:#0891b2">' + fRp(c.com_n) + '</td>',
+      com_t:        '<td class="num" style="color:#0891b2">' + fRp(c.com_t) + '</td>',
+      lucro:        '<td class="num" style="color:' + mClr + ';font-weight:600">' + fRp(c.lucro) + '</td>',
+      marg:         '<td><div class="lucro-spark"><div class="lucro-bar-bg"><div class="lucro-bar-fill" style="width:' + Math.min(Math.max(c.marg,0),100).toFixed(0) + '%;background:' + mClr + '"></div></div><span style="color:' + mClr + ';font-size:11px;font-family:var(--mono);font-weight:600;width:44px;text-align:right">' + c.marg.toFixed(1) + '%</span></div></td>',
+      lucroT:       '<td class="num" style="color:' + mClrT + ';font-weight:600">' + fRp(c.lucroT) + '</td>',
+      margT:        '<td><div class="lucro-spark"><div class="lucro-bar-bg"><div class="lucro-bar-fill" style="width:' + Math.min(Math.max(c.margT,0),100).toFixed(0) + '%;background:' + mClrT + '"></div></div><span style="color:' + mClrT + ';font-size:11px;font-family:var(--mono);font-weight:600;width:44px;text-align:right">' + c.margT.toFixed(1) + '%</span></div></td>',
+    };
+    return '<tr>' + visCols.map(col => cellMap[col.key]||'<td>—</td>').join('') + '</tr>';
+  }).join('');
 
-    return `<tr>
-      <td style="font-weight:600;white-space:nowrap">${r.prod}</td>
-      <td><span class="badge badge-${(r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'')}">${r.classif}</span></td>
-      <td style="font-size:11px;color:var(--text2)">${r.tec||'—'}</td>
-      <td style="font-size:11px;color:var(--text3)">${r.cor||'—'}</td>
-      <td class="num" style="font-weight:700;color:#FFFFFF;background:#7B2D8B;border-radius:4px">
-        ${fRp((r.custo_pc||0) + c.frete + c.cf + c.imp + c.taxa + c.com_n)}
-      </td>
-      <td class="num" style="color:var(--amber);font-weight:500">${fRp(r.custo_pc||0)}</td>
-      <td class="num" style="color:#0891b2;font-weight:500">${fRp(r.composicao_pc||0.43)}</td>
-      <td class="num">
-        <input type="number" min="0" step="0.5" value="${c.pvo.toFixed(2)}"
-          style="${inpStyle(hasOrigOvr)}"
-          oninput="ttPVChange(${r._idx},'orig',this.value)" title="PV Original">
-      </td>
-      <td class="num">
-        <input type="number" min="0" step="0.5" value="${c.pv.toFixed(2)}"
-          style="${inpStyle(hasDescOvr)}"
-          oninput="ttPVChange(${r._idx},'desc',this.value)" title="PV Campanha (desconto)">
-      </td>
-      <td class="num" style="color:var(--text2)">${fRp(c.cf)}</td>
-      <td class="num" style="color:#DC2626">${fRp(c.imp)}</td>
-      <td class="num" style="color:#7C3AED">${fRp(c.taxa)}</td>
-      <td class="num" style="color:var(--text2)">${fRp(c.frete)}</td>
-      <td class="num" style="color:#0891b2">${fRp(c.com_n)}</td>
-      <td class="num" style="color:#0891b2">${fRp(c.com_t)}</td>
-      <td class="num" style="color:${mClr};font-weight:600">${fRp(c.lucro)}</td>
-      <td>
-        <div class="lucro-spark">
-          <div class="lucro-bar-bg"><div class="lucro-bar-fill" style="width:${Math.min(Math.max(c.marg,0),100).toFixed(0)}%;background:${mClr}"></div></div>
-          <span style="color:${mClr};font-size:11px;font-family:var(--mono);font-weight:600;width:44px;text-align:right">${fPct(c.marg)}</span>
-        </div>
-      </td>
-      <td class="num" style="color:${mClrT};font-weight:600">${fRp(c.lucroT)}</td>
-      <td>
-        <div class="lucro-spark">
-          <div class="lucro-bar-bg"><div class="lucro-bar-fill" style="width:${Math.min(Math.max(c.margT,0),100).toFixed(0)}%;background:${mClrT}"></div></div>
-          <span style="color:${mClrT};font-size:11px;font-family:var(--mono);font-weight:600;width:44px;text-align:right">${fPct(c.margT)}</span>
-        </div>
-      </td>
-    </tr>`;
+  // ── Linha de médias no tfoot ───────────────────────────────────────────────
+  const n = items.length || 1;
+  const avg = key => {
+    const vals = items.map(r => {
+      const c = ttCalc(r);
+      if (key==='desembolso_tt') return (r.custo_pc||0)+c.frete+c.cf+c.imp+c.taxa+c.com_n;
+      if (key==='custo')   return r.custo_pc||0;
+      if (key==='comp')    return r.composicao_pc||0.43;
+      if (key==='pv_orig') return c.pvo;
+      if (key==='pv_desc') return c.pv;
+      if (key==='cf')      return c.cf;
+      if (key==='imp')     return c.imp;
+      if (key==='taxa')    return c.taxa;
+      if (key==='frete')   return c.frete;
+      if (key==='com_n')   return c.com_n;
+      if (key==='com_t')   return c.com_t;
+      if (key==='lucro')   return c.lucro;
+      if (key==='lucroT')  return c.lucroT;
+      if (key==='marg')    return c.marg;
+      if (key==='margT')   return c.margT;
+      return null;
+    }).filter(v => v !== null);
+    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  };
+  const NUMERIC_COLS = new Set(['desembolso_tt','custo','comp','pv_orig','pv_desc','cf','imp','taxa','frete','com_n','com_t','lucro','lucroT','marg','margT']);
+  const IS_PCT = new Set(['marg','margT']);
+
+  const tfootHtml = visCols.map((c,i) => {
+    if (i===0) return '<td style="font-size:10px;font-weight:700;color:var(--text3);white-space:nowrap">Média ('+n+')</td>';
+    if (!NUMERIC_COLS.has(c.key)) return '<td></td>';
+    const a = avg(c.key);
+    if (a===null) return '<td></td>';
+    const val = IS_PCT.has(c.key) ? a.toFixed(1)+'%' : fRp(a);
+    const mClr = (c.key==='lucro'||c.key==='lucroT') ? (a>=0?'var(--green)':'var(--red)') : (c.key==='marg'||c.key==='margT') ? (a>=25?'var(--green)':a>=10?'var(--amber)':'var(--red)') : c.key==='desembolso_tt' ? '#7B2D8B' : '';
+    return '<td class="num" style="font-size:11px;font-weight:600;color:' + (mClr||'var(--text2)') + ';border-top:2px solid var(--border2)">' + val + '</td>';
   }).join('');
 
   buildTTResumo(items);
 
-  document.getElementById('tt-body').innerHTML = `
-    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">Precificação TikTok Shop</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      Custo de produção = sistema Pangeia 96 · PVs e parâmetros editáveis em tempo real
-      · Comissão Normal ${ttState.params.comissao_normal_pct}% · Comissão Top ${ttState.params.comissao_top_pct}%
-    </div>
-    <div class="anal-table-wrap">
-      <table class="anal-table">
-        <thead><tr>${thHtml}</tr></thead>
-        <tbody>${tbHtml}</tbody>
-      </table>
-    </div>`;
+  document.getElementById('tt-body').innerHTML =
+    '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">Precificação TikTok Shop</div>'
+    + '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Custo de produção = sistema Pangeia 96 · PVs e parâmetros editáveis em tempo real'
+    + ' · Comissão Normal ' + ttState.params.comissao_normal_pct + '% · Comissão Top ' + ttState.params.comissao_top_pct + '%</div>'
+    + toggleHtml
+    + '<div class="anal-table-wrap"><table class="anal-table">'
+    + '<thead><tr>' + thHtml + '</tr></thead>'
+    + '<tbody>' + tbHtml + '</tbody>'
+    + '<tfoot><tr>' + tfootHtml + '</tr></tfoot>'
+    + '</table></div>';
 }
 
 function buildTT() {
