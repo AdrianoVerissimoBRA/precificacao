@@ -1153,7 +1153,7 @@ const COLS = [
   { key:'receita',   label:'Receita Cliente',  grp:'base',   fmt:v=>v!=null?`<span class="val-accent" style="font-weight:600">R$${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0})}</span>`:'—' },
   // CUSTOS
   { key:'pv_real',    label:'Preço Médio/pç',   grp:'custos', fmt:(v,d)=>d.qtd>0?`R$${(d.receita/d.qtd).toFixed(2)}`:'—' },
-  { key:'custo_pc',  label:'Custo Prod./pç',   grp:'custos', fmt:v=>v!=null?`<span class="val-amber">R$${Number(v).toFixed(2)}</span>`:'<span class="val-muted">—</span>' },
+  { key:'custo_pc',  label:'Custo CMV',   grp:'custos', fmt:v=>v!=null?`<span class="val-amber">R$${Number(v).toFixed(2)}</span>`:'<span class="val-muted">—</span>' },
   { key:'custo_lote', label:'Custo Total Lote',  grp:'custos', fmt:(v,d)=>d.custo_pc!=null&&d.qtd>0?`<span class="val-amber">R$${(d.custo_pc*d.qtd).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}</span>`:'—' },
   { key:'costura_pc',label:'Costura/pç',       grp:'custos', fmt:v=>v!=null?`R$${Number(v).toFixed(2)}`:'—' },
   { key:'corte_pc',  label:'Corte/pç',         grp:'custos', fmt:v=>v!=null&&v>0?`R$${Number(v).toFixed(2)}`:'—' },
@@ -2390,7 +2390,7 @@ function renderPrec() {
   };
   const thHtml = [
     th('prod','Produto'), th('classif','Tipo'), th('tec','Tecido'),
-    th('desembolso','Custo Total'), th('custo','Custo Prod./pç'), th('costura','Costura/pç'), th('corte','Corte/pç'), th('tecido','Tecido/pç'),
+    th('desembolso','Custo Total'), th('custo','Custo CMV'), th('costura','Costura/pç'), th('corte','Corte/pç'), th('tecido','Tecido/pç'),
     th('aviamento_pc','Aviamento'), th('composicao_pc','Composição'), th('frete','Frete'), th('icms','ICMS'), th('desp','Desp.'),
     th('pv','PV'), th('lucro','Lucro/pç'), th('marg','Margem')
   ].join('');
@@ -3119,6 +3119,7 @@ function renderTT() {
       if (k==='cor')     return r.cor;
       if (k==='tec')     return r.tec;
       const c = ttCalc(r);
+      if (k==='desembolso_tt') return (r.custo_pc||0)+c.frete+c.cf+c.imp+c.taxa+c.com_n;
       if (k==='custo')   return r.custo_pc;
       if (k==='comp')    return r.composicao_pc || 0.43;
       if (k==='pv_desc') return c.pv;
@@ -3147,16 +3148,16 @@ function renderTT() {
 
   const thHtml = [
     th('prod','Produto'), th('classif','Tipo'), th('tec','Tecido'), th('cor','Cor'),
-    th('custo','CPV/pç','Custo de produção do sistema'), th('comp','Composição','Etiquetas + embalagem R$0,43/pç'),
+    th('desembolso_tt','Custo Total','CPV + Frete + CF + Imp + Taxa + Comissão'), th('custo','Custo CMV','Custo de produção — sistema Pangeia 96'), th('comp','Composição','Etiquetas + embalagem R$0,43/pç'),
     th('pv_orig','PV Original','Valor original do produto'), th('pv_desc','PV Campanha','Valor de venda na campanha TikTok'),
     th('cf','Custo Fixo','% do PV campanha'), th('imp','Imposto','% do PV'),
     th('taxa','Taxa TT','% do PV'), th('frete','Frete','R$/pç'),
-    th('com_n','Comissão Normal','% Creators normais'),
-    th('com_t','Comissão Top','% Top Creator'),
-    th('lucro','Lucro/pç','Com comissão normal'),
-    th('marg','MC %','Margem com comissão normal'),
-    th('lucroT','Lucro Top','Com comissão Top Creator'),
-    th('margT','MC% Top','Margem com Top Creator'),
+    th('com_n','Comissão Creator Normal','% Creators normais'),
+    th('com_t','Comissão Top Creator','% Top Creator'),
+    th('lucro','Lucro (Creator Normal)','Lucro por peça com comissão de creator normal'),
+    th('marg','MC % (Creator Normal)','Margem de contribuição com creator normal'),
+    th('lucroT','Lucro (Top Creator)','Lucro por peça com comissão de Top Creator'),
+    th('margT','MC % (Top Creator)','Margem de contribuição com Top Creator'),
   ].join('');
 
   const tbHtml = items.map(r => {
@@ -3174,6 +3175,9 @@ function renderTT() {
       <td><span class="badge badge-${(r.classif||'').toLowerCase().replace(/ç/g,'c').replace(/ /g,'')}">${r.classif}</span></td>
       <td style="font-size:11px;color:var(--text2)">${r.tec||'—'}</td>
       <td style="font-size:11px;color:var(--text3)">${r.cor||'—'}</td>
+      <td class="num" style="font-weight:700;color:#FFFFFF;background:#7B2D8B;border-radius:4px">
+        ${fRp((r.custo_pc||0) + c.frete + c.cf + c.imp + c.taxa + c.com_n)}
+      </td>
       <td class="num" style="color:var(--amber);font-weight:500">${fRp(r.custo_pc||0)}</td>
       <td class="num" style="color:#0891b2;font-weight:500">${fRp(r.composicao_pc||0.43)}</td>
       <td class="num">
